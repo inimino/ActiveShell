@@ -1,0 +1,35 @@
+{"define":
+  {"desc":"add a reference to the filesystem description"
+  ,"ports":["fake:PortFake"]
+  ,"args":["fakepath:String","localpath:String"]
+  ,"f":"function(cmd){var f=cmd.ports[0],path=cmd.args[0];f.insert(path,{});f.setprop(path,'path',cmd.args[1]);f.update();f.persist()}"
+  }
+,"deserialize":
+  {"desc":"replace the contents from a serialized JSON representation"
+  ,"ports":["fake:PortFake"]
+  ,"args":["serialized:String"]
+  ,"outs":[]
+  ,"f":"function(cmd){var f=cmd.ports[0];f.populate(cmd.args[0]);f.update();f.persist()}"
+  }
+,"serialize":
+  {"desc":"return the JSON serialization of the fake filesystem state"
+  ,"ports":["fake"]
+  ,"args":[]
+  ,"outs":["serialized:String"]
+  ,"f":"function(cmd){var f=cmd.ports[0];cmd.out(f.serialize())}"
+  }
+,"setprop":
+  {"desc":"set a metadata property"
+  ,"ports":["fake"]
+  ,"args":["propname:String","value:*"]
+  ,"outs":[]
+  ,"f":"function(cmd){var f=cmd.ports[0];f.setprop(cmd.args[0],cmd.args[1],cmd.args[2]);f.update();f.persist()}"
+  }
+,"rm":
+  {"desc":"remove an object (leaf or directory)"
+  ,"ports":["fake"]
+  ,"args":["path:String"]
+  ,"outs":["subtree:Object"]
+  ,"f":"function(cmd){var f=cmd.ports[0];cmd.out(f.remove(cmd.args[0]));f.update();f.persist()}"
+  }
+}

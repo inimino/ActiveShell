@@ -1,0 +1,47 @@
+{"history":
+      {"desc":"Retrieve the history of a resource."
+      ,"ports":["rvs:PortRevstore"]
+      ,"args":["path : String, Path"]
+      ,"f":"function(cmd){var p=cmd.ports[0];p.history(cmd.args[0],function(x){cmd.out(x)})}"}
+,"mv":{"desc":"Move a resource (with its history) to a new URI"
+      ,"ports":["rvs:PortRevstore"]
+      ,"args":["old : String, Path","new : String, Path"]
+      ,"outs":["message:String","code:Number"]
+      ,"f":"function(cmd){cmd.ports[0].mv(cmd.args[0],cmd.args[1],cmd.out)}"}
+,"rm":{"desc":"Unlink a resource. Its history is not deleted."
+      ,"ports":["rvs:PortRevstore"]
+      ,"args":["path:String,Path"]
+      ,"outs":["message:String","code:Number"]
+      ,"f":"function(cmd){cmd.ports[0].rm(cmd.args[0],cmd.out)}"}
+,"ls":{"desc":"List directory contents"
+      ,"ports":["rvs:PortRevstore"]
+      ,"args":["path : Opt String, Path"]
+      ,"outs":["listing:[String]"]
+      ,"f":"function(cmd){var p=cmd.ports[0];p.ls(cmd.args[0],cmd.out)}"}
+,"cd":{"desc":"Change the working directory"
+      ,"ports":["rvs:PortRevstore"]
+      ,"args":["path : String, Path"]
+      ,"f":"function(cmd){var p=cmd.ports[0];cmd.out(p.cd(cmd.args[0]));p.update();p.persist()}"}
+,"cat":
+      {"desc":"Output the contents of a file"
+      ,"ports":["rvs:PortRevstore"]
+      ,"args":["file : String, Path-File"]
+      ,"outs":["content:String"]
+      ,"f":"function(cmd){var p=cmd.ports[0];p.cat(cmd.args[0],cmd.out)}"}
+,"catall":
+      {"desc":"Like `map cat`"
+      ,"ports":["RevstorePort"]
+      ,"args":["uris:[String,Path-File]"]
+      ,"outs":["contents:[String]"]
+      ,"f":"function(cmd){var p=cmd.ports[0],uris,pending,ret=[];uris=cmd.args[0];pending=uris.length;uris.forEach(function(uri,i){xhr('GET',p.resolve(uri),null,function(x){ret[i]=x.responseText;pending--;go()})});go();function go(){if(!pending)cmd.out(ret)}}"}
+,"ln":{"desc":"Create a hard link"
+      ,"ports":["rvs:PortRevstore"]
+      ,"args":["source : String, Path","dest : String, Path"]
+      ,"outs":["message:String","code:Number"]
+      ,"f":"function(cmd){cmd.ports[0].ln(cmd.args[0],cmd.args[1],cmd.out)}"}
+,"put":
+      {"desc":"Put a string to a path in the revstore"
+      ,"args":["body:String","url:String,Path"]
+      ,"outs":["message:String","code:Number"]
+      ,"f":"function(cmd){var p=cmd.ports[0];p.put(cmd.args[0],cmd.args[1],cmd.out)}"}
+}

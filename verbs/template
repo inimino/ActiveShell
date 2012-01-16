@@ -1,0 +1,6 @@
+{"expand":
+  {"desc":"Expands a simple template with values from the provided object"
+  ,"args":["template:String","values:Object"]
+  ,"f":"function(cmd){var s=cmd.args[0],o=cmd.args[1];cmd.out(s.replace(/\\$([^$]*)\\$/g,function(m,a){return a in o?o[a]:a}))}"
+  }
+}

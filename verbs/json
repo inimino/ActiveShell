@@ -1,0 +1,13 @@
+{"jsonparse":
+  {"desc":"Parse a JSON string"
+  ,"args":["json:String"]
+  ,"outs":["value:String|Number|Object|Array|Boolean"]
+  ,"f":"function(cmd){cmd.out(JSON.parse(cmd.args[0]))}"
+  }
+,"jsonstringify":
+  {"desc":"Produce a JSON string"
+  ,"args":["value:*"]
+  ,"outs":["json:String"]
+  ,"f":"function(cmd){cmd.out(JSON.stringify(cmd.args[0]))}"
+  }
+}

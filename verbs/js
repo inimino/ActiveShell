@@ -1,0 +1,13 @@
+{"jsstr":
+  {"desc":"String-escapes a string for use in JavaScript source code."
+  ,"args":["input:String"]
+  ,"outs":["escaped:String"]
+  ,"f":"function(cmd){cmd.out(JSON.stringify(cmd.args[0]).slice(1,-1))}"
+  }
+,"jsstrprop":
+  {"desc":"should be a combination of a generic object iteration higher-order verb and jsstr"
+  ,"args":["input:{*:String}"]
+  ,"outs":["escaped:Object"]
+  ,"f":"function(cmd){var o=cmd.args[0],r={},p;for(p in o)r[p]=JSON.stringify(o[p]).slice(1,-1);cmd.out(r)}"
+  }
+}

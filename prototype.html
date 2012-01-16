@@ -1,0 +1,1093 @@
+<!doctype html>
+<title>Shell prototype</title>
+<style>
+* {margin:0;padding:0;border:0}
+* {-moz-border-radius:5px;-webkit-border-radius:5px;border-radius:5px}
+.square,html,body {-moz-border-radius:0;-webkit-border-radius:0;border-radius:0}
+body {background:#444}
+a:link {color:#48f}
+a:visited {color:#c5f}
+ul,ol {list-style:none}
+.hidden {display:none}
+#hint {background:#333;color:#fff;position:fixed;bottom:40%;width:40%;left:30%;z-index:9}
+#hint, #hint * {font:16px Georgia}
+#cl {background:#222;color:#cc9;padding:2px;font:32px monospace;position:fixed;bottom:33%;left:22%;width:60%;z-index:10;-moz-border-radius:4px;text-align:center}
+#pastebox {position:fixed;bottom:22%;height:28%;left:22%;width:60%;z-index:20;padding:2px;font:18px monospace}
+#paste {height:80%;width:100%;display:block;padding:2px;border:1px solid #111;background:#aaa;color:#222}
+#cl:focus {border:1px solid #997;box-shadow:0 0 8px 0 #997, 8px 12px 8px 0 #111}
+#cl.err {-moz-border-radius:8px 8px 0 0;-webkit-border-radius:8px 8px 0 0;border-radius:8px 8px 0 0;border:1px solid #422;box-shadow:0 0 8px 0 #422}
+#cl-err {background:#422;border:1px solid #422;color:#fff;padding:2px;font:32px monospace;position:fixed;top:67%;left:22%;width:60%;z-index:10;opacity:0.9;-moz-border-radius:0 0 8px 8px;-moz-transition:all .25s;-webkit-transition:all .25s;box-shadow:0 0 8px #422}
+#cl-err.hidden {display:block;opacity:0}
+#autocomplete {position:fixed;top:50%;left:22%;width:60%;z-index:10;font:16px monospace;background:rgba(64,64,64,0.7);border:2px solid #222;padding:0 0 0 4px;color:#ff8;border-top:0;border-radius:0 0 5px 5px;box-shadow:0 0 8px 0 #222}
+#env {position:fixed;right:8px;top:8px;height:18px;width:42%;background:#333;color:#fff;z-index:5;opacity:0.0;overflow:hidden;-moz-transition:all 1s;-webkit-transition:all 1s}
+#env:hover {height:40%;overflow:auto;opacity:1}
+#env.collapsed {height:1.6ex}
+#listing {position:fixed;z-index:2;bottom:0;right:2px;background:#333;color:#fff;padding:3px 32px 0 8px;max-height:50%;overflow-y:auto}
+#output {color:#eee;white-space:pre;width:75%;margin:0 0 0 25%}
+#output, #cmdhistory {font-size:12px;font-family:"DejaVu Sans Mono",monospace}
+#output li {margin:8px 8px 8px 12px;padding:2px}
+.record {border:1.5px solid #777;-moz-border-radius:8px;-webkit-border-radius:8px;position:relative}
+.record .cmd {border:1px solid #222;background:#333}
+.record .outputwrap {position:relative}
+.record .output {background:#555;max-height:256px;overflow-y:auto}
+.record .label {position:absolute;top:7px;right:18%;font-size:22px;background:#222;padding:2px;opacity:0.4}
+.record .ts {position:absolute;top:0;right:0}
+.record .type {position:absolute;top:0;right:20px}
+.record-cmd {padding:4px 2px 6px 4px;position:relative;width:100%;background:#333;clear:left;font-size:14px;-moz-box-sizing:border-box;-webkit-box-sizing:border-box;box-sizing:border-box}
+.record-cmd:nth-child(n+9) {font-size:12px;padding:2px 1px}
+.record-cmd:nth-child(n+17) {font-size:10px;padding:1px 0}
+.record-cmd:nth-child(n+33) {font-size:6px;padding:0}
+.record-cmd:nth-child(2n) {background:#444}
+/*
+.record-cmd .cmd {float:left;border:0}
+.record-cmd .ts {text-align:right;display:block;font-size:90%;letter-spacing:-0.4px;color:#888;font-family:monospace}
+*/
+.record-cmd .cmd {}
+.record-cmd .ts {display:none}
+.record-output {min-height:45px}
+.record-output:first-child .output {max-height:none}
+.record-output:nth-child(n+2) .output {max-height:128px}
+.record-output .metadata {position:absolute;right:20px;top:0;background:#333;padding:1px;opacity:0.4;transition:all .2s;-webkit-transition:all .2s;-moz-transition:all .2s;box-shadow:0 0 3px 2px #333}
+.record-output:hover .metadata {opacity:1.0}
+.record-output .cmd {border:0}
+.record-output .ts, .record-output .type, .record-output .cmd, .record-output .status {position:static;display:block;text-align:right}
+/*
+.record-output .status {display:none}
+*/
+#history {color:#fff;background:#222;position:fixed;right:22%;width:20%;height:40%;padding:8px;overflow:auto;display:none}
+#cmdhistory {float:left;left:0;top:0;height:100%;width:25%;color:#fff}
+#io {border:1px solid #222;background:rgba(16,16,16,.2);padding:4px 16px;color:#eee;font:14px monospace;list-style:upper-latin inside;position:fixed;bottom:0;right:0;max-width:30%;overflow:auto}
+</style>
+
+<body>
+
+<pre id=env></pre>
+<!--<pre id=listing></pre>-->
+<p id=hint class=hidden></p>
+<input id=cl>
+<fieldset id=pastebox class=hidden>
+
+ <textarea id=paste></textarea>
+ <input type=button id=pastecommit value=commit>
+ <input type=button id=pastecancel value=cancel>
+</fieldset>
+<p id=cl-err class=hidden>
+<pre id=autocomplete class=hidden></pre>
+<ol id=history></ol>
+<ol id=cmdhistory class=square></ol>
+<ul id=output></ul>
+<ul id=io></ul>
+
+<script src=deps/lists.js></script>
+<script src=deps/util.js></script>
+<script src=deps/DOM_util.js></script>
+<script src=deps/es5-shim.min.js></script>
+<script src=hinting.js></script>
+<script src=ports/fake.js></script>
+<script src=ports/rvs.js></script>
+<script src=ports/http.js></script>
+<script>
+(function(){"use strict"
+var cl=byId('cl')
+  , cl_err=byId('cl-err')
+  , output=byId('output')
+  , hint_el=byId('hint')
+  , cmd_history_el=byId('cmdhistory')
+  , env_el=byId('env')
+  , history_el=byId('history')
+  , history_uri
+  , session_uri
+  , current_server_env
+  , listing_el=document.getElementById('listing')
+  , env={}
+  , hint_timeout
+  , autocomplete_timeout
+  , autocomplete_el=document.getElementById('autocomplete')
+  , autocompletions
+  , autocompletion_sel_idx
+  , autocomplete_path_cache
+  , partial_command_parse
+  , ready_for_persistence
+  , command_records=[]
+  , verb_handlers={}
+  , port_objects=[]
+//  , revstore_root='/3box/'
+  , io_el=byId('io')
+  , paste_el=byId('paste')
+  , paste_commit_el=byId('pastecommit')
+  , paste_cancel_el=byId('pastecancel')
+  , paste_box_el=byId('pastebox')
+
+window.alert=alert
+function alert(s){
+ output.insertBefore(document.createElement('li'),output.firstChild).appendChild(document.createTextNode(s))}
+
+function get_env(s){
+ return env[s]}
+
+function set_env(s,v){
+ env[s]=v
+ env_el.textContent=pp(env)
+ if(s=='history'){history_el.innerHTML='';v.forEach(function(x){history_el.appendChild(cmd_to_li(x))}); history_el.scrollTop=history_el.scrollHeight}
+ if(s=='verbs')load_verbs(v)
+ if(s=='inputs'||s=='outputs'||s=='ports')update_io()
+ persist_env(env)
+ return v}
+
+function load_verbs(set){var p
+ for(p in set)try{verb_handlers[p]=eval('('+set[p].f+')')}catch(e){alert('could not load '+p+' eval error: '+e.message)}}
+
+function persist_env(env){var persist,o,i,p,text
+ if(!ready_for_persistence)return
+ persist=[/*'PWD',*/'executions','ports']//,'verbs','outputs']
+ o={}
+ for(i=0;p=persist[i++];) o[p]=env[p]
+ //o.inputs=filter_inputs(env.inputs)
+ o.verbs={}
+ Object.keys(env.verbs).forEach(function(k){if(!env.verbs[k].builtin)o.verbs[k]=env.verbs[k]})
+ text=JSON.stringify(o)
+ if(current_server_env==text)return
+ current_server_env=text
+ xhr('PUT',session_uri+'env',text,function(x){if(x.status!=200)alert('error storing env')})
+ }
+
+/*
+function filter_inputs(inputs){
+ if(!inputs)return
+ return inputs.map(function(input){
+   return {uri:input.uri
+          ,history_updated:input.history_updated
+          ,current_uri:input.current_uri}})}
+*/
+
+window.onhashchange=hashchange
+
+function init_env(){
+  set_env('verbs',
+  {load:{desc:"load a verb set from the Web"
+        ,builtin:true
+        ,args:["URL of the verb set to load"]
+        ,f:'function(cmd){loadVerbSet(cmd)}'}
+  ,help:{desc:"display help for a verb"
+        ,builtin:true
+        ,args:["verb:String"]
+        ,f:'function(cmd){cmd.out(helpForVerb(cmd.args[0]))}'}
+  ,edverb:{desc:"edit the implementation of a verb"
+          ,builtin:true
+          ,args:["verb:String"]
+          ,f:'function(cmd){cmd.out(edverb(cmd.args[0]))}'
+          }
+  ,paste:{desc:"import text by pasting or typing in a textarea"
+         ,builtin:true
+         ,args:[]
+         ,f:'function(cmd){paste(cmd)}'
+         }
+  ,openssh:
+      {desc:"open a port to an SSH server via an HTTP gateway"
+      ,builtin:true
+      ,privileged:true
+      ,args:["gateway:String","connection:String"]
+      ,f:'function(cmd){openPortSSH(cmd)}'
+      }
+  ,openfake:
+      {desc:"open a port to a fake filesystem"
+      ,builtin:true
+      ,args:[]
+      ,f:'function(cmd){createPort("PortFake")}'
+      }
+  ,openrvs:
+      {desc:"open a port to the local revision store"
+      ,builtin:true
+      ,args:['path:String']
+      ,f:'function(cmd){createPort("PortRevstore",cmd.args)}'
+      }
+  ,openhttp:
+      {desc:"open an HTTP port for same-origin or CORS requests"
+      ,builtin:true
+      ,args:[]
+      ,f:'function(cmd){createPort("PortHTTP",cmd.args)}'
+      }
+  ,each:
+      {desc:"Calculate [output] again with [input] taken from each of [items]"
+      ,builtin:true
+      ,magic:true // magic := uses raw arguments (before reference expansion)
+      ,args:["output:reference","input:reference","items:[*]"]
+      ,f:'function(cmd){each(cmd)}'
+      }
+  ,sortby:
+      {desc:"Sort [items] by a score calculated for each item as [output] was from [input]"
+      ,builtin:true
+      ,magic:true
+      ,args:['items:[*]','output:reference','input:reference']
+      ,f:'function(cmd){sortby(cmd)}'
+      }
+  })
+  //set_env('PWD',revstore_root)
+  }
+
+// It is possible that we might want to make 'each' and 'sortby' and other post-hoc-lambda-constructing verbs use a wee bit more syntax, rather than ambiguously using numeric literals to refer both to a command and its output
+// each 3 2 1
+// -or-
+// each (3 → 2) 1
+// -or-
+// map (3 → 2) 1
+// based on the argument order above, these arrows are actually going the wrong way, correct is:
+// map (2 → 3) 1
+// which of course makes sense since 3 was generated from 2 and the higher number comes later
+
+function hashchange(){var m,id,got_h,got_e
+ ready_for_persistence=false
+ m=/script=(.*)/.exec(location.hash)
+ if(!m)return
+ id=m[1]
+ env={}
+ init_env()
+ session_uri='sessions/'+id+'/'
+ history_uri=session_uri+'script'
+ got_h=got_e=false
+ xhr('GET',history_uri,null,function(x){var parsed
+   env.script=id
+   if(x.status==404){env.history=[];return}
+   try{parsed=JSON.parse(x.responseText)}
+   catch(e){env.history=[];alert('could not parse history JSON: '+x.responseText)}
+   set_env('history',parsed)
+   //alert('doing history')
+   env.history.forEach(createCmdRecord)
+   got_h=true
+   go()
+   })
+ xhr('GET',session_uri+'env',null,function(x){var persisted,verbs
+   if(x.status==404)ready_for_persistence=true
+   if(x.status!=200&&x.status!=304)return
+   try{persisted=JSON.parse(x.responseText)}
+   catch(e){alert(''+e);return}
+   verbs=env.verbs
+   extend(env,persisted)
+   if(persisted.verbs) extend(verbs,persisted.verbs)
+   env.verbs=verbs
+   if(persisted.verbs)load_verbs(persisted.verbs)
+   current_server_env=x.responseText
+   update_io()
+   ready_for_persistence=true
+   got_e=true
+   go()
+   })
+ function go(){
+  if(got_h&&got_e)show_executions()}
+ }
+
+cl.onkeydown=function(e){var hist_pos,parsed,partial,hint_obj,context
+ clear_cl_err()
+ set_env('keydown',e.which+' '+e.keyCode)
+ if((e.which||e.keyCode)==38&&env.history&&env.history.length){
+  hist_pos=get_env('history_pos')||env.history.length
+  hist_pos--
+  set_env('history_pos',hist_pos)
+  cl.value=cmd_to_str(env.history[hist_pos])}
+ if((e.which||e.keyCode)==40&&env.history&&env.history.length){
+  hist_pos=get_env('history_pos')||env.history.length
+  hist_pos=(hist_pos+1)%env.history.length
+  set_env('history_pos',hist_pos)
+  cl.value=cmd_to_str(env.history[hist_pos])}
+ if((e.which||e.keyCode)==13){
+  if(cl.selectionStart!=cl.selectionEnd) autocomplete_accept()
+  else runEitherCmd(parseCmd(cl.value))} // run the command
+ else if((e.which||e.keyCode)==9){autocomplete();e.preventDefault();return false}
+ else{
+  autocomplete_timeout_start()}}
+
+cl.onkeyup=function(e){e=e||event
+ set_env('keyup',e.which+' '+e.keyCode)
+ autocomplete_timeout_start()
+ return false}
+
+cl.onkeypress=function(e){e=e||event;var hist_pos
+ set_env('keypress',e.which+' '+e.keyCode)
+ autocomplete_timeout_start()
+ if(e.keyCode==9){e.preventDefault();return false}}
+
+function autocomplete_timeout_start(){
+ clearTimeout(autocomplete_timeout)
+ autocomplete_timeout=setTimeout(autocomplete_begin,75)}
+
+cl.focus()
+
+// PWD is specific to the posix verb set and should only be initialized when it is (and removed if it is unloaded)
+// So is this, so verb sets need their own set of helper function and/or initialization code
+// 20110827: It turns out these aren't really normal verbs, there needs to be a "mount" equivalent that handles the kind of I/O the revstore does.
+// Then mounting some external I/O resource into the shell's filesystem hierarchy can be handled by the shell itself or by some loadable module, not by ordinary unprivileged verbs.
+// 20111204: These are now called ports.
+
+// In some cases, revstore requests (such as mv or ln) use a header (Destination, X-Link-With) to specify a second URI in the revstore tree.
+// In these cases, the revstore URI in the header needs to be rooted relative to the revstore root, not the domain.
+// Currently on boshi this means removing the "/3box" prefix.
+// TODO: this location information should come from the server when the shell is loaded.
+// 20111204: this is now handled by the rvs port which takes the prefix as an argument when it is opened
+/*
+function reroot(path){
+ if(path.slice(0,revstore_root.length)==revstore_root)return path.slice(revstore_root.length-1)
+ return path}
+*/
+
+// if args looks like this:
+//        ,"args":["file : String, Path-File"]
+// and we take the PWD as an input and do our own resolution in the command
+//        ,"env-in":"PWD"
+// it would make more sense instead to have the shell do the resolution since it already knows that the arg is a Path-File
+// 20111204: The port needs to do the resolution, but it should happen independently of running the command, during the autocompletion / fixup phase (which is not what happens currently) and the absolute path should be saved with the command record so that re-running the command does not depend on the current port working directory.
+
+function parseCmd(cmd){var i,l,c,o
+  // o is an object that holds the parser state and the command as it is being built up
+  o={verb:"",verbs:[],args:[],flags:"",state:0,ports:[]}
+  loop:for(i=0,l=cmd.length;i<l;i++){c=cmd[i]
+    switch(o.state){
+    case 0: // the start state
+      switch(c){
+      case '"': o.state=1; o.tok=''; break // the 'in quoted string' state
+      case ' ': break // ignore spaces
+      case '-': o.state=2; break // the 'in flags' state
+      default: if(c<='9'&&c>='0'){o.tok=c;o.state=5;o.args.push(+c)} // the 'number literal' state
+               else if(c<='z'&&c>='a'){o.tok=o.verb=c;o.verbs.push(o.tok);o.state=3} // the 'in command name' state
+               else if(c<='Z'&&c>='A'){o.ports.push(c);o.state=8} // the 'after A-Z port ref' state
+               else return err('could not parse '+cmd+' at char '+i)} // anything else is a syntax error
+      break
+    case 1: // in quoted string
+      switch(c){
+      case '"': o.state=0; o.args.push(o.tok); break // quoted string has been closed, each of these is stored in args
+      case '\\': o.state=4; break // the purpose of a \ is to escape the next character
+      default: o.tok+=c} // any other char gets appended to the string value
+      break
+    case 2: // in flags, this means a '-' was seen and anything following until the next space or EOF is interpreted as a flag
+      if(c==' '){o.state=0}
+      else{o.flags+=c}
+      break
+    case 3: // in the verb state, a-z is appended to the verb; space, double quote, or EOF terminates; anything else is an error
+      if(c==' ')o.state=0
+      else if(c=='"')o.state=1,o.tok=''
+      else if(c<='z'&&c>='a')o.verb+=c,o.tok+=c,o.verbs[o.verbs.length-1]=o.tok
+      else return err('could not parse verb at char '+i)
+      break
+    case 4: // escaped mode in a quoted string
+      if(c=='\\'||c=='"'){o.tok+=c;o.state=1}
+      else return err("invalid escape sequence at "+i)
+      break
+    case 5: // number literal state, terminated by a space or EOF
+      if(c==' '){o.state=0}
+      else if(c<='9'&&c>='0'){o.tok+=c;o.args[o.args.length-1]=parseInt(o.tok,10)}
+      else return err('invalid numeric literal at '+i)
+      break
+    case 8:
+      if(c==' '){o.state=0}
+      break
+    default:
+      throw new Error("can't happen")}}
+  // here we are at 'eof', having looped over the string.
+  switch(o.state){
+  case 1:
+  case 4:
+    return err("unclosed quoted string")
+  case 0:
+  case 2:
+  case 3:
+  case 5:
+  case 8:
+    return [true,o]}
+  throw new Error("can't happen either")
+  function err(s){o.error=s;return[false,o]}}
+// only the last verb given takes effect, so a nice UI feature would be to remove the existing verb from the command line if a new one is entered (although it may be nice to be able to get the old verb back just by deleting the new one)
+// perhaps using strikethrough to indicate that the first verb is shadowed by the latter one
+// however if we add higher-order verbs such as `map` then we must support more than one verb
+// in any case multiple verbs that exist on the command line should be passed on to the hinting stage
+
+// generate a partial command which is used for hinting, from a parsed command line (which may be incomplete)
+function partial_command(parsed){var partial
+  partial=extend({},parsed)
+  //partial.verbs=parsed.verb?[parsed.verb]:[]
+  return partial}
+
+// hint :: {errors::[String]
+//         ,effects::[String]
+//         ,completions::[{type::"verb"|"arg"|"port",token::Integer,completion::String}]
+//         ,deletions::[{type::"verb"|"arg"|"port",token::Integer}]}
+function show_hint(hint){var out
+  removeClass(hint_el,'hidden')
+  out=[]
+  if(hint.effects.length){
+    out=out.concat(hint.effects)}
+  if(hint.completions.length){
+    out.push(pp(hint.completions))}
+  hint_el.innerHTML='<ul><li>'+out.join('<li>')+'</ul>'
+  }
+
+function autocomplete_begin(){var either,o,partial,hint_obj,context,previous_value
+  either=parseCmd(cl.value)
+  o=either[1]
+  //alert(pp(either,{cols:125}))
+  partial=partial_command(o)
+  context={verbs:get_env('verbs')
+          ,port_objects:port_objects}
+  previous_value=cl.value
+  hint(partial,context,show_hint_unless_changed)
+  /*
+  if(o.state==6||o.state==7
+    || (o.state==1||o.state==4) && true)path_completion(o.tok,function(completions){ // XXX belongs in the rvs port
+    autocompletions=completions
+    autocompletion_sel_idx=-1
+    autocomplete_preview()
+  })
+  else{autocomplete_el.textContent='';autocomplete_el.className='hidden';return}
+  */
+  partial_command_parse=o
+  function show_hint_unless_changed(hint){if(cl.value!=previous_value)return;show_hint(hint)}}
+
+function autocomplete_preview(){var ret=''
+  ret+=autocompletions.map(function(x,i){
+    if(i==autocompletion_sel_idx)return x+'   <Enter>'
+    if(i==(autocompletion_sel_idx+1)%autocompletions.length)return x+'   <Tab>'
+    return x}).join('\n')
+  autocomplete_el.textContent=ret
+  autocomplete_el.className=ret?'':'hidden'}
+
+function autocomplete_accept(){
+  cl.selectionStart=cl.selectionEnd
+  autocomplete_begin()}
+
+function autocomplete(){var completion,o=partial_command_parse,extra,selStart,new_value
+  autocompletion_sel_idx=(autocompletion_sel_idx+1)%autocompletions.length
+  autocomplete_preview()
+  completion=autocompletions[autocompletion_sel_idx]
+  extra=completion.slice(o.tok.length)
+  selStart=cl.selectionStart
+  new_value=cl.value.slice(0,cl.selectionStart)+extra+cl.value.slice(cl.selectionEnd)
+  cl.value=new_value
+  cl.selectionStart=selStart
+  cl.selectionEnd=selStart+extra.length}
+
+/* XXX all autocompletion code below belongs in the rvs port
+
+autocomplete_path_cache={}
+
+function path_completion(tok,cb){var listing,path,listing_path,tok_dir
+  path=env.PWD
+  if(tok[tok.length-1]=='/') tok_dir=tok
+  else tok_dir=path_segments(tok).slice(0,-1).join('')
+  listing_path=path+tok_dir
+  //alert('listing_path: '+listing_path+' tok_dir: '+tok_dir+' '+path_segments(tok).join())
+  listing=autocomplete_path_cache[listing_path]
+  if(!listing || Date.now()-listing.ts > 30000){
+    xhr('GET',listing_path+'?text',null,function(x){
+      //alert(x.status+' '+x.responseText)
+      if(x.status<200 || x.status>399) return
+      listing=autocomplete_path_cache[listing_path]={ts:Date.now(),listing:x.responseText.split('\n')}
+      go()})
+    return []}
+  go()
+  function go(){
+    cb(prefix_completion(listing.listing.map(function(x){return path_escape(tok_dir+x)}),tok))}}
+
+function path_escape(s){
+  return s.replace(/"/g,'\\"')}
+
+function prefix_completion(list,tok){
+  return list.filter(function(x){return x.slice(0,tok.length)==tok})}
+*/
+
+function fmt_execution_dates(cmd){
+  return cmd.executions.map(function(x){return x.ts}).join('<br>')}
+
+function createCmdRecord_handlers(cmd,id,el_out,el_type,el_status){var key,stored
+  command_records[id]=cmd
+  cmd.output=[]
+  cmd.out=out
+  cmd.append=append
+  cmd.status=status
+  key=get_env('script')+'_cmd_'+id+'_out'
+  if(stored=localStorage.getItem(key)){out_(JSON.parse(stored));cmd.status('stored')}
+  else{cmd.status('(not stored)')}
+  return {append:append,out:out}
+  function append(s){el_out.appendChild(document.createTextNode(s))}
+  function out(s){out_(s);try{localStorage.setItem(key,JSON.stringify(s))}catch(e){
+   alert('localStorage error saving output: '+e)
+   localStorage.clear()
+   alert('(cleared local storage)')}}
+  function out_(s){el_out.textContent=print(s);el_type.textContent=type(s);cmd.output.push(s)}
+  function status(s){if(!el_status)return;el_status.textContent=s}}
+
+function type(x){
+  if(x===null)return 'null'
+  if(Array.isArray(x))return 'array'
+  return typeof x}
+
+// called for new commands and also once for each command in the history when loading the page
+function createCmdRecord(cmd,id){var el,el2,el3,el4,el5,el6,el7,el8,el9,el0,el11
+  el=cmd_history_el.insertBefore(document.createElement('li'),cmd_history_el.firstChild);el.className='record-separate square record-cmd'
+  el2=el.appendChild(document.createElement('div'));el2.className='cmd'
+  el2.textContent=cmd_to_str(cmd)
+  el8=output.insertBefore(document.createElement('li'),output.firstChild);el8.className='record record-output'
+  el7=el8.appendChild(document.createElement('div'));el7.className='outputwrap'
+  el0=el7.appendChild(document.createElement('div'));el0.className='metadata'
+  el9=el0.appendChild(document.createElement('div'));el9.className='cmd square'
+  el11=el0.appendChild(document.createElement('div'));el11.className='status'
+  el9.textContent=cmd_to_str(cmd)
+  el3=el7.appendChild(document.createElement('pre'));el3.className='output'
+  el4=el7.appendChild(document.createElement('div'));el4.className='label'
+  id=(id==undefined?(get_env('history')||[]).length:id)+1
+  cmd.id=id
+  el4.textContent=id
+  //el5=el.appendChild(document.createElement('span'));el5.className='ts'
+  //el5.textContent=cmd.ts?fmt_date(new Date(cmd.ts)):'\u00a0'
+  //el0.appendChild(el5.cloneNode(true))
+  el6=el0.appendChild(document.createElement('div'));el6.className='type'
+  return createCmdRecord_handlers(cmd,id,el3,el6,el11)}
+
+function print(x){
+  if(x instanceof Array && typeof(x[0])=='string')return x.join('\n')
+  if(typeof x=='string')return x
+  return pp(x,{string_limit:128,cols:96})
+  return String(x)}
+
+function resolveArgs(args,cb){var resolved,pending
+  pending=0
+  resolved=resolve_arg_types(args)
+/*
+  resolved.forEach(function(arg){
+    if(arg.type=='input'){
+      pending++
+      input_cache_current(arg.input,go)}
+    })
+*/
+  if(!pending)cb(resolved)
+  function go(){if(!--pending)cb(resolved)}}
+
+function resolve_arg_types(args){
+  //alert(pp(command_records))
+  return args.map(resolve_arg_type)}
+
+function resolve_arg_type(arg){
+  if(typeof arg=='number') return {type:'ref'
+                                  ,ref:arg}
+                                  //,value:command_records[arg].output.slice(-1)[0]}
+  return {type:'literal'
+         ,value:arg}}
+
+function resolve_port(id){var index
+  index=id.charCodeAt()-'A'.charCodeAt()
+  return port_objects[index]}
+
+/*
+function input_value(input,ts){var uri,item
+  //alert('input_value: ts: '+ts+' input: '+pp(input))
+  if(ts==undefined)uri=input.current_uri
+  else{
+    item=input_hist_item_asof(input,ts)
+    if(!item)return alert('could not get value for: '+pp(input))
+    else uri=archive_uri(item.ts,item.path)}
+  return input.cache[uri]}
+*/
+
+function arg_value(arg,tok){
+  switch(arg.type){
+  case 'literal': return arg.value
+  //case 'port': return arg.port
+  //case 'input':return input_value(arg.input,tok)
+  case 'ref':if(!command_records[arg.ref].output.length) alert('reference to unevaluated command: '+arg.ref); return command_records[arg.ref].output.slice(-1)[0]
+  default: throw new Error('bad arg.type value: '+arg.type)}}
+
+/*
+function arg_archive(arg){
+  if(arg.type=='input')return arg.input.current_uri}
+*/
+
+/* TODO: move this into the rvs port somehow
+function arg_reconstruction_token(arg){
+  if(arg.type=='input')return arg.input.last_modified
+  if(arg.type=='literal')return arg.value
+  if(arg.type=='ref')return command_records[arg.ref].current_execution_ref}
+*/
+
+/*
+function input_cache_current(input,cb){
+  //alert('input_cache_current: '+pp(input))
+  input_update_history(input,go)
+  function go(){var x,uri,hist
+    hist=input.history
+    x=hist[hist.length-1]
+    input.last_modified=x.ts
+    uri=input.current_uri=archive_uri(x.ts,x.path)
+    if(input.cache[uri]){cb();return}
+    input_cache(uri,input.cache,cb)}}
+*/
+
+/*
+// TODO: put this generic history code elsewhere
+function input_hist_item_asof(input,ts){var hist,x,i
+  hist=input.history
+  for(i=hist.length;i--;){
+    x=hist[i]
+    if(x.ts<ts) return x}}
+
+function input_cache_asof(input,ts,cb){
+  input_update_history(input,go)
+  function go(){var hist,x,cache,curr,i,item,uri
+    //alert('input_cache_asof: input: '+pp(input))
+    item=input_hist_item_asof(input,ts)
+    if(!item)return alert('no revision for timestamp: '+ts+' '+input)
+    uri=archive_uri(item.ts,item.path)
+    if(input.cache[uri]){cb();return}
+    input_cache(uri,input.cache,cb)}}
+
+function input_cache(uri,cache,cb){
+  xhr('GET',uri,null,function(x){
+    if(x.status!=200&&x.status!=304)return alert('could not fetch '+curr+' '+x.status+' '+x.responseText)
+    cache[uri]=x.responseText
+    cb()})}
+*/
+
+function update_io(){var inputs,outputs,ports
+  inputs=get_env('inputs')||[]; ports=get_env('ports')||[]
+  emptyEl(io_el)
+  //alert('inputs: '+inputs.length+' ports: '+ports.length)
+  inputs.forEach(function(input){var el1
+    el1=io_el.appendChild(document.createElement('li'))
+    update_input(input,el1)})
+  ports.forEach(function(port,i){var el1,port_obj
+    port_obj=port_objects[i]=port_objects[i]||createPortObject(port)
+    if(el1=port_obj.output_el){
+      io_el.appendChild(el1)
+      return}
+    port_obj.output_el=el1=io_el.appendChild(cEl('li'))
+    update_port(port,port_obj,el1)})}
+
+function update_port(port,obj,el){
+  obj.on('identify',function(x){el.textContent=x})
+  }
+
+/* TODO: put this in the rvs port
+function update_input(input,el){var now,hist
+  //alert(pp(input))
+  now=Date.now()
+  emptyEl(el)
+  el.appendChild(document.createTextNode('<'+input.uri))
+  if(!input.history_updated || now-input.history_updated > 30000){input_update_history(input,update_io);return}
+  if(input.status){el.appendChild(document.createTextNode(' 404'));return}
+  hist=input.history
+  el.appendChild(document.createTextNode(' '+fmt_date(input.last_modified)))
+  }
+*/
+
+function show_executions(){var execs
+  execs=get_env('executions')
+  if(!execs)return
+  execs.forEach(function(e){var cmd
+    cmd=command_records[e.cmd_ref]
+    //alert(pp(e))
+    })
+  }
+
+// TODO: put this somewhere
+function parse_history(s){var a,ret=[],ts=0,path='',i,l
+  a=JSON.parse(s)
+  for(i=0,l=a.length;i<l;i++){
+    if(typeof a[i]=='number'){ts+=a[i];ret.push({path:path,ts:ts})}
+    else path=a[i]}
+  return ret}
+
+// TODO: move this also
+function archive_uri(ts,path){
+  return '/3box-asof/'+ts+path}
+
+/*
+function input_update_history(input,cb){var now
+  now=Date.now()
+  if(now-input.history_updated < 500) return
+  input.cache=input.cache||{}
+  xhr('GET',input.uri+'?history',null,function(x){
+    input.history_updated=Date.now()
+    if(x.status==404) input.status=404
+    else{
+      input.history=parse_history(x.responseText)
+      input.last_modified=input.history[input.history.length-1].ts}
+    update_io()
+    if(cb)cb()
+    })}
+*/
+
+function runEitherCmd(either){var cmd,dummy_cmd,uri,handler,history,args,hist_item,ts,input_env
+  if(!either[0]){reportError(either[1].error);return}
+  cmd=either[1]
+  ts=cmd.ts=Date.now()
+  if(!cmd.verb){clean_cl();return}
+  if(cmd.verb=='rv'){clean_cl();revive(cmd);return}
+  if(cmd.verb=='up'){clean_cl();update(cmd);return}
+  //if(cmd.verb=='each'){clean_cl();each(cmd);return}
+  handler=lookupVerb(cmd.verb)
+  if(!handler){reportError('unknown verb '+cmd.verb);return}
+  createCmdRecord(cmd)
+  cmd.status('pending input')
+  args=cmd.args
+  if(handler['env-in']||handler['env-out']) throw new Error('env-in and env-out are gone');
+  if(verb_handlers[cmd.verb].length>1)alert('old handler API: '+cmd.verb)
+  resolveArgs(args,handle)
+  function handle(args_resolved){var executions,execution
+    //cmd.args=args_resolved.map(function(x){return arg_value(x)})
+    dummy_cmd={}
+    //alert('resolved args')
+    //alert(pp(cmd.ports))
+    dummy_cmd.ports=cmd.ports.map(resolve_port)
+    //alert(pp(dummy_cmd.ports))
+    //alert(pp(port_objects))
+    if(handler.magic&&handler.builtin) dummy_cmd.raw_args=args
+    dummy_cmd.args=args_resolved.map(function(x){return arg_value(x)})
+    dummy_cmd.out=cmd.out
+    //alert(pp(dummy_cmd))
+    cmd.status('calculating')
+    verb_handlers[cmd.verb](dummy_cmd)//,input_env,function(x){set_env(handler['env-out'],x);cmd.out(x)})
+    execution={}
+    //execution.reconstruction_tokens=args_resolved.map(arg_reconstruction_token)
+    execution.ts=Date.now()
+    execution.cmd_ref=cmd.id
+    execution.env=input_env
+    cmd.status('calculated '+fmt_date(execution.ts))//': '+fmt_date(newest_input(execution.ts)))
+    executions=(get_env('executions')||[]).concat([execution])
+    cmd.current_execution_ref=executions.length-1
+    set_env('executions',executions)
+  }
+  hist_item=
+    {verb:cmd.verb
+    ,ports:cmd.ports
+    ,args:args
+    ,flags:cmd.flags
+    ,ts:cmd.ts
+    ,current_execution_ref:cmd.current_execution_ref
+    }
+  history=(get_env('history')||[]).concat([hist_item])
+  //history=history.map(function(x){if(x.output)delete x.output;return x})
+  if(history_uri) xhr('PUT',history_uri,JSON.stringify(history),function(x){if(x.status!=200)alert('error storing history')})
+  set_env('history',history)
+  set_env('history_pos',history.length)
+  clean_cl()}
+
+function revive(cmd){
+  return revive_by_id(cmd.args[0])}
+
+function update(cmd){
+  return revive_by_id(cmd.args[0],null,true)}
+
+// 'update' re-creates, including side-effects, and displays new output
+// 'revive' simply re-runs and will re-display original output of the command (if arguments have not changed value)
+
+function revive_by_id(id,cb,update){var rec,execution,executions,resolved,pending,values,handler
+  executions=get_env('executions')||[]
+  rec=command_records[id]
+  if(!rec){reportError('no such command '+id);return}
+  if(rec.verb=='paste'&&!update)return cb && setTimeout(cb,0) // XXX paste magic should be in port API
+  executions.forEach(function(exec){
+    if(exec.cmd_ref==id)execution=exec})
+  resolved=resolve_arg_types(rec.args)
+  pending=0
+  handler=lookupVerb(rec.verb)
+  rec.status(update?'updating':'regenerating')
+  resolved.forEach(function(arg,i){
+    /*
+    if(arg.type=='input'){
+      if(update) input_cache_current(arg.input,go)
+      else input_cache_asof(arg.input,execution.reconstruction_tokens[i],go)
+      pending++
+      }
+    */
+    if(arg.type=='ref'){
+      revive_by_id(arg.ref,go,update)
+      pending++}
+    })
+  if(!pending)pending++,go()
+  function go(){var synth_cmd
+    if(--pending)return
+    if(update) values=resolved.map(function(x){return arg_value(x)})
+    else values=resolved.map(function(x,i){return arg_value(x,execution.reconstruction_tokens[i])})
+    //alert(pp(values))
+    //alert(pp(rec))
+    synth_cmd=
+      {verb:rec.verb
+      ,ports:rec.ports.map(resolve_port)
+      ,raw_args:(handler.builtin&&handler.magic)?rec.args:undefined
+      ,args:values
+      ,ts:execution.ts
+      ,out:rec.out
+      ,append:rec.append
+      ,status:rec.status
+      }
+    //alert('synth_cmd: '+pp(synth_cmd))
+    verb_handlers[synth_cmd.verb](synth_cmd/*,execution.env*/)
+    synth_cmd.status(update?'updated':'regenerated')
+    if(cb)setTimeout(cb,0)
+    }
+  }
+
+function each(cmd){
+  map_each(cmd.raw_args[0],cmd.raw_args[1],cmd.args[2],cmd.out)}
+
+function sortby(cmd){
+  sortby_(cmd.args[0],cmd.raw_args[1],cmd.raw_args[2],cmd.out)}
+
+function map_each(cmdref,x,xs,out){var orig_cmd,orig_input,dep_graph,lambda
+  orig_cmd=command_records[cmdref]
+  orig_input=command_records[x]
+  lambda=make_lambda_by_substitution(cmdref,x)
+  out(pp({orig_cmd:orig_cmd,lamdba:lambda,x:x,xs:xs}))
+  iterate_lambda(lambda,xs,out)}
+
+function sortby_(items,outref,inref,out){
+  iterate_lambda(make_lambda_by_substitution(outref,inref),items,cb)
+  function cb(scores){var pairs
+    pairs=items.map(function(item,i){return [scores[i],item]})
+    pairs.sort(function(a,b){return a[0]-b[0]})
+    out(pairs/*.map(function(x){return x.join(': ')})*/)}}
+
+function iterate_lambda(lambda,xs,out){var pending,outputs
+  pending=xs.length
+  outputs=[]
+  xs.forEach(function(x,i){apply(lambda,[x],cb(i))})
+  function cb(i){return function cb_(output){
+      outputs[i]=output
+      if(!--pending)out(outputs)}}
+  if(!pending)out(outputs)}
+
+/*
+function dependency_graph(id){var ret
+  ret={deps:{}
+      }
+  go(id)
+  return ret
+  function go(id){var deps,ref,cmd,rec,resolved
+    rec=command_records[id]
+    if(ret.deps[id])return
+    ret.deps[id]=deps=[]
+    resolved=resolve_arg_types(rec.args)
+    resolved.forEach(function(x){deps.push(x); if(x.type!='ref')return; go(x.ref)})
+    }}
+*/
+
+// cmd_id is the target of the lambda, the command which generated the output value of interest
+// input is either a reference or a literal input value which is to be substituted out
+function make_lambda_by_substitution(cmd_id,input){var ret,input_arg
+  ret={deps:{}
+      ,args:[]
+      ,const:[]
+      ,recalc:[]}
+  input_arg=resolve_arg_type(input)
+  go(cmd_id)
+  function go(id){var rec,resolved,recalculate
+    rec=command_records[id]
+    if(ret.deps[id])return
+    recalculate=false
+    resolved=resolve_arg_types(rec.args)
+    resolved.forEach(function(x){
+      if(x.type=='ref'){
+        if(x.ref==input)recalculate=true
+        if(go(x.ref))recalculate=true}
+      if(x.type=='literal'&&input_arg.type=='literal'){
+        if(x.value===input_arg.value)recalculate=true}})
+    if(recalculate)ret.recalc.push(id)
+    else ret.const.push(id)
+    return recalculate}
+  ret.target=cmd_id
+  ret.args=[input]
+  return ret}
+
+function apply(lambda,args,cb){var verb,rec,verb_f,dummy,values,pending
+  values={}
+  if(args.length!=lambda.args.length)throw new Error('wrong number of args in apply: '+args.length+' != '+lambda.args.length)
+  rec=command_records[lambda.target]
+  verb=lookupVerb(rec.verb)
+  verb_f=verb_handlers[rec.verb]
+  lambda.args.forEach(function(id,i){
+    values[id]=args[i]})
+/*
+  lambda.const.forEach(function(id){
+    values[id]=arg_value(id)})
+*/
+  pending=lambda.recalc.length
+  if(!pending)finish()
+  lambda.recalc.forEach(function(id){
+    recalculate(id,values,cb)
+    function cb(x){
+      values[id]=x
+      if(!--pending){finish()}}})
+  function finish(){
+    cb(values[lambda.target])}
+  }
+
+function recalculate(id,values,cb){var dummy,rec,resolved_arg_values,resolved_args
+  rec=command_records[id]
+  resolved_args=resolve_arg_types(rec.args)
+  resolved_arg_values=resolved_args.map(function(arg){
+    if(arg.type=='ref' && arg.ref in values)return values[arg.ref]
+    return arg_value(arg)})
+  dummy=
+    {args:resolved_arg_values
+    // ports are not handled yet ('each' supports pure operations only)
+    ,out:function(x){cb(x)}
+    ,status:function(){}
+    }
+  verb_handlers[rec.verb](dummy)}
+
+function clean_cl(){
+  cl.value=''
+  autocomplete_el.className='hidden'
+  hint_el.className='hidden'
+  }
+
+function cmd_to_li(cmd){var el
+  el=cEl('li')
+  el.appendChild(cTN(cmd_to_str(cmd)))
+  return el}
+
+function cmd_to_str(cmd){return (cmd.args.length?cmd.args.map(arg_quote).join(' ')+' ':'')+cmd.verb+(cmd.ports&&cmd.ports.length?' ('+cmd.ports.join(' ')+')':'')}
+
+function fmt_date(d){
+  if(d==undefined)return 'undefined'
+  if(typeof d=='number')d=new Date(d)
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())
+  function pad(n){return (n>9?'':'0')+n}}
+
+function arg_quote(s){
+  if(!s)return '...'
+  //return pp(s)
+  if(typeof s=='number')return ''+s
+  if(s.match(/^[A-Z]$/))return s
+  return '"'+s.replace(/[\\"]/g,function(m){return '\\'+m[0]})+'"'}
+
+function openPortSSH(cmd){var portid,gw,ports,port,user,host,m
+  gw=cmd.args[0]
+  portid=cmd.args[1]
+  m=/([^@]*)@(.*)/.exec(portid)
+  if(!m){cmd.out('could not parse '+portid+' as an SSH connection string');return}
+  user=m[1];host=m[2]
+  port=createPort()
+  port.user=user
+  port.host=host
+  cmd.out('opened SSH port to '+portid+' via '+gw)}
+
+function createPort(impl_name,args){var port,ports
+  port={}
+  port.impl_name=impl_name
+  port.args=args
+  ports=get_env('ports')||[]
+  port.id=ports.length+1
+  ports.push(port)
+  set_env('ports',ports)
+  return port}
+
+function createPortObject(port){var o
+  o={}
+  extend(o,event_interface())
+  window[port.impl_name].init(Persistence(port),o,port.args)
+  //alert('createPortObject: '+pp(o))
+  return o}
+
+// Create a persistence object which a port uses to save its internal state across page reloads
+function Persistence(port){var base_path
+  base_path=session_uri+'ports/'+port.id+'/'
+  return 0,
+    {write:write
+    ,read:read
+    }
+  function write(path,data,cb){var str
+    cb=cb||function(e){if(e)alert('persistence write error: '+e)}
+    try{str=JSON.stringify(data)}catch(e){return cb('JSON.stringify error: '+e)}
+    xhr('PUT',base_path+path,str,function(x){
+      //alert(base_path+path+' '+x.status)
+      if(x.status==200) cb(null)
+      else cb(x.status)})}
+  function read(path,cb){
+    xhr('GET',base_path+path,null,function(x){
+      if(x.status>399||x.status<200){cb(x.status)}
+      else try{cb(null,JSON.parse(x.responseText))}
+      catch(e){cb(e)}
+    })}
+  }
+
+function loadVerbSet(cmd){var uri,set,names,dep_tokens,dep_filenames,relative
+  relative="verbs/"
+  uri=relative+cmd.args[0]
+  xhr('GET',uri,null,verb_set)
+  function verb_set(x){var p,metadata
+    if(x.status!=200 && x.status!=304){reportError('could not fetch '+uri);return}
+    try{set=JSON.parse(x.responseText)}catch(e){cmd.out('could not parse contents of '+uri+' as JSON.');return}
+    metadata=set._metadata_||{dependencies:[]}
+    delete set._metadata_
+    names=Object.keys(set)
+    dep_tokens=Object.keys(metadata.dependencies)
+    dep_filenames=dep_tokens.map(function(k){return relative+metadata.dependencies[k]})
+    GET_all(dep_filenames,deps)}
+  function deps(results){var env_verbs,replacements
+    //alert(pp(results))
+    replacements={}
+    results.forEach(function(x,i){
+      if(x.status!=200&&x.status!=304)alert('could not load: '+dep_filenames[i]+' '+x.status)
+      replacements[dep_tokens[i]]=x.responseText})
+    names.forEach(function(name){
+      set[name].builtin=false
+      set[name].source_uri=uri
+      set[name].f=expand(set[name].f,replacements)})
+    env_verbs=get_env('verbs')||[]
+    extend(env_verbs,set)
+    set_env('verbs',env_verbs)
+    cmd.out('loaded '+names.join())
+    }}
+
+function regexp_escape(s){return s.replace(/[[\\+{(*.?$^|]/g,"\\$&")}
+
+function expand(template,replacements){var tokens,re,regexp
+  //alert(pp(replacements))
+  tokens=Object.keys(replacements||{})
+  if(!tokens.length)return template
+  re=tokens.map(regexp_escape).join('|')
+  regexp=RegExp(re,'g')
+  return template.replace(regexp,function(m){return replacements[m]})}
+
+function edverb(verbname){var verb,url
+  verb=lookupVerb(verbname)
+  url=verb.source_uri+'.ed'
+  window.open(url)
+  return url}
+
+// belongs in a browser port
+function paste(cmd){
+  show()
+  paste_commit_el.onclick=function(){
+    cmd.out(paste_el.value)
+    hide()
+    }
+  paste_cancel_el.onclick=function(){
+    hide()}
+  function show(){
+    paste_box_el.className=''}
+  function hide(){
+    paste_box_el.className='hidden'
+    cl.focus()}}
+
+function lookupVerb(verb){
+  return env.verbs[verb]}
+
+function helpForVerb(verb){var o
+  o=lookupVerb(verb)
+  if(!o)return "use `help <verb>` for help on <verb> or `load <relative url>` to load verbs, e.g. `load \"verbs/posix\"`"
+             + "\nloaded verbs: "+Object.keys(env.verbs).join()
+  return o.desc
+       + '\nargs: '+o.args.join('; ')
+       + '\nenv: ('+(o['env-in']||'')+') ('+(o['env-out']||'')+')'}
+
+function reportError(err){cl_err.textContent=err;alert(err);cl_err.className='';cl.className='err'}
+function clear_cl_err(){cl_err.className='hidden';cl.className=''}
+
+function extend(a,b){for(var p in b) if(Object.prototype.hasOwnProperty.call(b,p)) a[p]=b[p]; return a}
+
+function reviver(name,val){
+  if(name=='f') return eval('('+val+')') // turn the 'f' properties, given as strings, into real functions
+  return val}
+
+hashchange()
+
+})()
+</script>

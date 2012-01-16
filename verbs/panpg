@@ -1,0 +1,18 @@
+{"_metadata_":
+  {"dependencies":
+    {"$PanPG.js$":"deps/PanPG.js"
+    }
+  }
+,"generateparser":
+  {"desc":"Generate a parser for the provided grammar using PanPG"
+  ,"args":["grammar:String|[String]","opts:String"]
+  ,"outs":["parser:String"]
+  ,"f":"function(cmd){var PanPG,CSET,cUC,re_shortnames,v6_function_rle_dec;$PanPG.js$;cmd.out(PanPG.generateParser(cmd.args[0],JSON.parse(cmd.args[1])))}"
+  }
+,"explain":
+  {"desc":"parse input according to grammar and produce verbose explanation of the parse"
+  ,"args":["grammar:String","opts:Object","input:String","verbosity:Integer"]
+  ,"outs":["explanation:String"]
+  ,"f":"function(cmd){var PanPG,CSET,cUC,v6_function_rle_dec;$PanPG.js$;\ncmd.out(PanPG.explain(cmd.args[0],cmd.args[1],cmd.args[2],cmd.args[3]))}"
+  }
+}

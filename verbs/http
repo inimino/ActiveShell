@@ -1,0 +1,6 @@
+{"get":
+  {"desc":"GET a resource representation from the same origin or using CORS"
+  ,"ports":["HTTP"]
+  ,"args":["url:String"]
+  ,"f":"function(cmd){var p=cmd.ports[0];p.request('GET',cmd.args[0],null,function(x){cmd.out(x.responseText)})}"
+  }}

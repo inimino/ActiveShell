@@ -1,0 +1,13 @@
+{"_metadata_":
+  {"dependencies":
+    {"$panpg_util.js$":"deps/PanPG_util.js"
+    ,"$csv_util.js$":"deps/csv_util.js"
+    }
+  }
+,"parsecsv":
+  {"desc":"Parse CSV file into an array of arrays"
+  ,"args":["csv:String"]
+  ,"outs":["data:[[String]]"]
+  ,"f":"function parsecsv(cmd){var PanPG_util;$panpg_util.js$;$csv_util.js$;cmd.out(parse_csv(cmd.args[0]))}"
+  }
+}

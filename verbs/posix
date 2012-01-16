@@ -1,0 +1,13 @@
+{"sort":{"desc":"sort"
+        ,"args":["input:[String]"]
+        ,"outs":["sorted:[String]"]
+        ,"f":"function(cmd){cmd.out(cmd.args[0].slice().sort())}"}
+,"grep":{"desc":"grep"
+        ,"args":["pattern:RegExp","input:[String]"]
+        ,"outs":["filtered:[[String]]"]
+        ,"f":"function(cmd){var re=new RegExp(cmd.args[0]),out=[];cmd.args[1].forEach(function(s){var m;if(m=re.exec(s))out.push([s].concat(m))});cmd.out(out)}"}
+,"wc":{"desc":"wc"
+      ,"args":["input:String"]
+      ,"outs":["count:String"]
+      ,"f":"function(cmd){var s=cmd.args[0];cmd.out(s.split('\\n').length-1 + ' lines, ' + (s.split(/[ \\n]/).length-1) + ' words, ' + s.length + ' chars\\n')}"}
+}

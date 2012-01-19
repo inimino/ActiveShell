@@ -1,5 +1,5 @@
 {"_metadata_":
-  {"dependencies":
+  {"includes":
     {"$panpg_util.js$":"deps/PanPG_util.js"
     ,"$csv_util.js$":"deps/csv_util.js"
     }

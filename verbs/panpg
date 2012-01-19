@@ -1,5 +1,5 @@
 {"_metadata_":
-  {"dependencies":
+  {"includes":
     {"$PanPG.js$":"deps/PanPG.js"
     }
   }

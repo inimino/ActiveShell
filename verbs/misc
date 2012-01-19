@@ -1,7 +1,13 @@
 {"_metadata_":
-  {"dependencies":
+  {"includes":
     {"$lists.js$":"deps/lists.js"
     }
+  }
+,"keys":
+  {"desc":"get the names of the properties of an object"
+  ,"args":["o:Object"]
+  ,"outs":["names:[String]"]
+  ,"f":"function(cmd){cmd.out(Object.keys(cmd.args[0]))}"
   }
 ,"property":
   {"desc":"get a named property from an object"
@@ -42,11 +48,23 @@
   ,"outs":["joined:String"]
   ,"f":"function(cmd){cmd.out(cmd.args.join('\\n'))}"
   }
+,"concat":
+  {"desc":"join strings"
+  ,"args":["a:String","b:String"]
+  ,"outs":["joined:String"]
+  ,"f":"function(cmd){cmd.out(cmd.args[0]+cmd.args[1])}"
+  }
 ,"split":
   {"desc":"split a string by a delimiter"
   ,"args":["input:String","delimiter:String"]
   ,"outs":["substrings:[String]"]
   ,"f":"function(cmd){cmd.out(cmd.args[0].split(cmd.args[1]))}"
+  }
+,"join":
+  {"desc":"join the elements of an array, separated by [separator], to create a string"
+  ,"args":["input:[String]","separator:String"]
+  ,"outs":["joined:String"]
+  ,"f":"function(cmd){cmd.out(cmd.args[0].join(cmd.args[1]))}"
   }
 ,"objzip":
   {"desc":"([String], [Value]) → Object -- takes an array of property names and of values and gives an object"
@@ -73,7 +91,7 @@
   }
 ,"seq":
   {"desc":"generate a sequence of integers"
-  ,"args":["end:Integer","start, step (when we have optional / default args)"]
+  ,"args":["end:Integer","start:Integer","step:Integer"]
   ,"f":"function(cmd){var start,end,inc,i,ret=[];end=+cmd.args[0];start=0;inc=1;for(i=start;i<end;i+=inc)ret.push(i);cmd.out(ret)}"
   }
 ,"head":
@@ -122,6 +140,6 @@
   {"desc":""
   ,"args":["a","b"]
   ,"outs":["pair"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0],cmd.args[1])}"
+  ,"f":"function(cmd){cmd.out([cmd.args[0],cmd.args[1]])}"
   }
 }

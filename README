@@ -4,12 +4,14 @@ An ActiveShell session is identified by a URI and accessed using a browser.
 
 It can be used like a Unix shell to manage files on remote systems accessible by SSH, like an REPL for exploratory programming, and can access any networked service for which a port has been implemented.
 
-See [this blog post][post] for more.
+http://inimino.org/~inimino/blog/shell_for_the_web
+http://inimino.org/~inimino/blog/activeshell_aiclass
 
-[post]: http://inimino.org/~inimino/blog/shell_for_the_web
-
-## Installation
+Installation
+------------
 
 The shell UI itself is contained entirely in prototype.html.
 However, the shell creates a session and for that session to persist there must be a server that handles PUT requests.
 Any server that accepts HTTP PUT requests, and returns the same data on a subsequent GET, is sufficient.
+
+(... specific instructions for setting up a server ...)

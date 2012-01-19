@@ -9,7 +9,7 @@ a:link {color:#48f}
 a:visited {color:#c5f}
 ul,ol {list-style:none}
 .hidden {display:none}
-#hint {background:#333;color:#fff;position:fixed;bottom:40%;width:40%;left:30%;z-index:9}
+#hint {background:#333;color:#fff;position:fixed;top:69%;width:40%;left:30%;z-index:9}
 #hint, #hint * {font:16px Georgia}
 #cl {background:#222;color:#cc9;padding:2px;font:32px monospace;position:fixed;bottom:33%;left:22%;width:60%;z-index:10;-moz-border-radius:4px;text-align:center}
 #pastebox {position:fixed;bottom:22%;height:28%;left:22%;width:60%;z-index:20;padding:2px;font:18px monospace}
@@ -25,17 +25,20 @@ ul,ol {list-style:none}
 #listing {position:fixed;z-index:2;bottom:0;right:2px;background:#333;color:#fff;padding:3px 32px 0 8px;max-height:50%;overflow-y:auto}
 #output {color:#eee;white-space:pre;width:75%;margin:0 0 0 25%}
 #output, #cmdhistory {font-size:12px;font-family:"DejaVu Sans Mono",monospace}
-#output li {margin:8px 8px 8px 12px;padding:2px}
+#output li {margin:8px 8px 8px 32px;padding:2px}
 .record {border:1.5px solid #777;-moz-border-radius:8px;-webkit-border-radius:8px;position:relative}
 .record .cmd {border:1px solid #222;background:#333}
 .record .outputwrap {position:relative}
 .record .output {background:#555;max-height:256px;overflow-y:auto}
-.record .label {position:absolute;top:7px;right:18%;font-size:22px;background:#222;padding:2px;opacity:0.4}
+/*.record .label {position:absolute;top:7px;right:18%;font-size:22px;background:#222;padding:2px;opacity:0.4}*/
 .record .ts {position:absolute;top:0;right:0}
 .record .type {position:absolute;top:0;right:20px}
 .record-cmd {padding:4px 2px 6px 4px;position:relative;width:100%;background:#333;clear:left;font-size:14px;-moz-box-sizing:border-box;-webkit-box-sizing:border-box;box-sizing:border-box}
+.record-cmd .label {position:absolute;right:0;top:0;padding:4px 0;background:inherit;color:#888}
 .record-cmd:nth-child(n+9) {font-size:12px;padding:2px 1px}
+.record-cmd:nth-child(n+9) .label {padding:2px 0}
 .record-cmd:nth-child(n+17) {font-size:10px;padding:1px 0}
+.record-cmd:nth-child(n+17) .label {padding:0}
 .record-cmd:nth-child(n+33) {font-size:6px;padding:0}
 .record-cmd:nth-child(2n) {background:#444}
 /*
@@ -48,12 +51,17 @@ ul,ol {list-style:none}
 .record-output:first-child .output {max-height:none}
 .record-output:nth-child(n+2) .output {max-height:128px}
 .record-output .metadata {position:absolute;right:20px;top:0;background:#333;padding:1px;opacity:0.4;transition:all .2s;-webkit-transition:all .2s;-moz-transition:all .2s;box-shadow:0 0 3px 2px #333}
+.record-output .metadata {position:static;float:right}
+.record-output .metadata {top:0;right:0}
 .record-output:hover .metadata {opacity:1.0}
 .record-output .cmd {border:0}
 .record-output .ts, .record-output .type, .record-output .cmd, .record-output .status {position:static;display:block;text-align:right}
-/*
+.record-output .label {position:absolute;top:7px;left:-32px;font-size:22px;background:#222;padding:2px;opacity:0.4}
+/**/
+.record-output .output {white-space:pre-wrap}
+/**/
 .record-output .status {display:none}
-*/
+/**/
 #history {color:#fff;background:#222;position:fixed;right:22%;width:20%;height:40%;padding:8px;overflow:auto;display:none}
 #cmdhistory {float:left;left:0;top:0;height:100%;width:25%;color:#fff}
 #io {border:1px solid #222;background:rgba(16,16,16,.2);padding:4px 16px;color:#eee;font:14px monospace;list-style:upper-latin inside;position:fixed;bottom:0;right:0;max-width:30%;overflow:auto}
@@ -90,7 +98,7 @@ ul,ol {list-style:none}
 (function(){"use strict"
 var cl=byId('cl')
   , cl_err=byId('cl-err')
-  , output=byId('output')
+  , output_el=byId('output')
   , hint_el=byId('hint')
   , cmd_history_el=byId('cmdhistory')
   , env_el=byId('env')
@@ -120,7 +128,7 @@ var cl=byId('cl')
 
 window.alert=alert
 function alert(s){
- output.insertBefore(document.createElement('li'),output.firstChild).appendChild(document.createTextNode(s))}
+ output_el.insertBefore(document.createElement('li'),output_el.firstChild).appendChild(document.createTextNode(s))}
 
 function get_env(s){
  return env[s]}
@@ -166,12 +174,14 @@ function init_env(){
   set_env('verbs',
   {load:{desc:"load a verb set from the Web"
         ,builtin:true
-        ,args:["URL of the verb set to load"]
+        ,args:["location:String"]
         ,f:'function(cmd){loadVerbSet(cmd)}'}
+/*
   ,help:{desc:"display help for a verb"
         ,builtin:true
         ,args:["verb:String"]
         ,f:'function(cmd){cmd.out(helpForVerb(cmd.args[0]))}'}
+*/
   ,edverb:{desc:"edit the implementation of a verb"
           ,builtin:true
           ,args:["verb:String"]
@@ -236,45 +246,43 @@ function init_env(){
 // which of course makes sense since 3 was generated from 2 and the higher number comes later
 
 function hashchange(){var m,id,got_h,got_e
- ready_for_persistence=false
- m=/script=(.*)/.exec(location.hash)
- if(!m)return
- id=m[1]
- env={}
- init_env()
- session_uri='sessions/'+id+'/'
- history_uri=session_uri+'script'
- got_h=got_e=false
- xhr('GET',history_uri,null,function(x){var parsed
-   env.script=id
-   if(x.status==404){env.history=[];return}
-   try{parsed=JSON.parse(x.responseText)}
-   catch(e){env.history=[];alert('could not parse history JSON: '+x.responseText)}
-   set_env('history',parsed)
-   //alert('doing history')
-   env.history.forEach(createCmdRecord)
-   got_h=true
-   go()
-   })
- xhr('GET',session_uri+'env',null,function(x){var persisted,verbs
-   if(x.status==404)ready_for_persistence=true
-   if(x.status!=200&&x.status!=304)return
-   try{persisted=JSON.parse(x.responseText)}
-   catch(e){alert(''+e);return}
-   verbs=env.verbs
-   extend(env,persisted)
-   if(persisted.verbs) extend(verbs,persisted.verbs)
-   env.verbs=verbs
-   if(persisted.verbs)load_verbs(persisted.verbs)
-   current_server_env=x.responseText
-   update_io()
-   ready_for_persistence=true
-   got_e=true
-   go()
-   })
- function go(){
-  if(got_h&&got_e)show_executions()}
- }
+  emptyEl(output_el);emptyEl(cmd_history_el)
+  ready_for_persistence=false
+  m=/script=(.*)/.exec(location.hash)
+  if(!m)return
+  id=m[1]
+  env={}
+  init_env()
+  session_uri='sessions/'+id+'/'
+  history_uri=session_uri+'script'
+  got_h=got_e=false
+  xhr('GET',history_uri,null,function(x){var parsed
+    env.script=id
+    if(x.status==404){env.history=[];return}
+    try{parsed=JSON.parse(x.responseText)}
+    catch(e){env.history=[];alert('could not parse history JSON: '+x.responseText)}
+    set_env('history',parsed)
+    //alert('doing history')
+    env.history.forEach(createCmdRecord)
+    got_h=true
+    go()})
+  xhr('GET',session_uri+'env',null,function(x){var persisted,verbs
+    if(x.status==404)ready_for_persistence=true
+    if(x.status!=200&&x.status!=304)return
+    try{persisted=JSON.parse(x.responseText)}
+    catch(e){alert(''+e);return}
+    verbs=env.verbs
+    extend(env,persisted)
+    if(persisted.verbs) extend(verbs,persisted.verbs)
+    env.verbs=verbs
+    if(persisted.verbs)load_verbs(persisted.verbs)
+    current_server_env=x.responseText
+    update_io()
+    ready_for_persistence=true
+    got_e=true
+    go()})
+  function go(){
+    if(got_h&&got_e)show_executions()}}
 
 cl.onkeydown=function(e){var hist_pos,parsed,partial,hint_obj,context
  clear_cl_err()
@@ -519,25 +527,36 @@ function type(x){
   return typeof x}
 
 // called for new commands and also once for each command in the history when loading the page
-function createCmdRecord(cmd,id){var el,el2,el3,el4,el5,el6,el7,el8,el9,el0,el11
-  el=cmd_history_el.insertBefore(document.createElement('li'),cmd_history_el.firstChild);el.className='record-separate square record-cmd'
-  el2=el.appendChild(document.createElement('div'));el2.className='cmd'
-  el2.textContent=cmd_to_str(cmd)
-  el8=output.insertBefore(document.createElement('li'),output.firstChild);el8.className='record record-output'
-  el7=el8.appendChild(document.createElement('div'));el7.className='outputwrap'
-  el0=el7.appendChild(document.createElement('div'));el0.className='metadata'
-  el9=el0.appendChild(document.createElement('div'));el9.className='cmd square'
-  el11=el0.appendChild(document.createElement('div'));el11.className='status'
-  el9.textContent=cmd_to_str(cmd)
-  el3=el7.appendChild(document.createElement('pre'));el3.className='output'
-  el4=el7.appendChild(document.createElement('div'));el4.className='label'
+function createCmdRecord(cmd,id){var el3,el6,el11,template_cmd,template_out,html_cmd,html_out,replacements,div
+  template_cmd='<li class="record-separate square record-cmd">'
+              +  '<div class=cmd>$cmd_to_str$</div>'
+              +  '<div class=label>$id$</div>'
+              +'</li>'
+  template_out='<li class="record record-output">'
+              +  '<div class=outputwrap>'
+              +    '<div class=metadata>'
+              +      '<div class="cmd square">$cmd_to_str$</div>'
+              +      '<div class=status></div>'
+              +      '<div class=type></div>'
+              +    '</div>'
+              +    '<pre class=output></pre>'
+              +    '<div class=label>$id$</div>'
+              +  '</div>'
+              +'</li>'
   id=(id==undefined?(get_env('history')||[]).length:id)+1
   cmd.id=id
-  el4.textContent=id
-  //el5=el.appendChild(document.createElement('span'));el5.className='ts'
-  //el5.textContent=cmd.ts?fmt_date(new Date(cmd.ts)):'\u00a0'
-  //el0.appendChild(el5.cloneNode(true))
-  el6=el0.appendChild(document.createElement('div'));el6.className='type'
+  replacements=
+    {"$cmd_to_str$":cmd_to_str(cmd)
+    ,"$id$":id
+    }
+  html_cmd=expand(template_cmd,replacements)
+  html_out=expand(template_out,replacements)
+  div=document.createElement('div')
+  div.innerHTML=html_cmd
+  cmd_history_el.insertBefore(div.firstChild,cmd_history_el.firstChild)
+  div.innerHTML=html_out
+  el3=div.querySelector('.output');el6=div.querySelector('.type');el11=div.querySelector('.status')
+  output_el.insertBefore(div.firstChild,output_el.firstChild)
   return createCmdRecord_handlers(cmd,id,el3,el6,el11)}
 
 function print(x){
@@ -923,9 +942,11 @@ function recalculate(id,values,cb){var dummy,rec,resolved_arg_values,resolved_ar
   resolved_arg_values=resolved_args.map(function(arg){
     if(arg.type=='ref' && arg.ref in values)return values[arg.ref]
     return arg_value(arg)})
+  //alert(pp(rec.ports))
   dummy=
     {args:resolved_arg_values
     // ports are not handled yet ('each' supports pure operations only)
+    ,ports:rec.ports.map(resolve_port)
     ,out:function(x){cb(x)}
     ,status:function(){}
     }
@@ -1014,11 +1035,11 @@ function loadVerbSet(cmd){var uri,set,names,dep_tokens,dep_filenames,relative
   function verb_set(x){var p,metadata
     if(x.status!=200 && x.status!=304){reportError('could not fetch '+uri);return}
     try{set=JSON.parse(x.responseText)}catch(e){cmd.out('could not parse contents of '+uri+' as JSON.');return}
-    metadata=set._metadata_||{dependencies:[]}
+    metadata=set._metadata_||{includes:[]}
     delete set._metadata_
     names=Object.keys(set)
-    dep_tokens=Object.keys(metadata.dependencies)
-    dep_filenames=dep_tokens.map(function(k){return relative+metadata.dependencies[k]})
+    dep_tokens=Object.keys(metadata.includes)
+    dep_filenames=dep_tokens.map(function(k){return relative+metadata.includes[k]})
     GET_all(dep_filenames,deps)}
   function deps(results){var env_verbs,replacements
     //alert(pp(results))
@@ -1070,6 +1091,7 @@ function paste(cmd){
 function lookupVerb(verb){
   return env.verbs[verb]}
 
+/*
 function helpForVerb(verb){var o
   o=lookupVerb(verb)
   if(!o)return "use `help <verb>` for help on <verb> or `load <relative url>` to load verbs, e.g. `load \"verbs/posix\"`"
@@ -1077,6 +1099,7 @@ function helpForVerb(verb){var o
   return o.desc
        + '\nargs: '+o.args.join('; ')
        + '\nenv: ('+(o['env-in']||'')+') ('+(o['env-out']||'')+')'}
+*/
 
 function reportError(err){cl_err.textContent=err;alert(err);cl_err.className='';cl.className='err'}
 function clear_cl_err(){cl_err.className='hidden';cl.className=''}

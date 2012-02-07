@@ -1,0 +1,12 @@
+{"_metadata_":
+  {"includes":
+    {"$mustache.js$":"deps/mustache.js"
+    }
+  }
+,"render":
+  {"desc":"apply a Mustache template [template] to a [view]"
+  ,"args":["template:String","view:Object"]
+  ,"outs":["rendered:String"]
+  ,"f":"$mustache.js$;cmd.out(Mustache.render(cmd.args[0],cmd.args[1]))"
+  }
+}

@@ -1,0 +1,43 @@
+{"setaccesskeyid":
+  {"desc":"set [id] as the Access Key ID to use on the port [aws]"
+  ,"ports":["aws:AWSPort"]
+  ,"args":["id:String"]
+  ,"outs":[]
+  ,"f":"function(cmd){cmd.ports[0].set_access_id(cmd.args[0])}"
+  }
+,"setsecretaccesskey":
+  {"desc":"set the Secret Access Key for use on the port [aws] (via a prompt)"
+  ,"ports":["aws:AWSPort"]
+  ,"args":[]
+  ,"outs":[]
+  ,"f":"function(cmd){var pass=prompt('Please enter your AWS Secret Access Key.');if(pass){cmd.ports[0].set_secret_access_key(pass);cmd.out('set from prompt')}else{cmd.out('canceled')}}"
+  }
+,"listverifiedemailaddresses":
+  {"desc":"Ask Amazon SES for the list of verified addresses on the account"
+  ,"ports":["aws:AWSPort"]
+  ,"args":[]
+  ,"outs":["resp:String"]
+  ,"f":"function(cmd){cmd.ports[0].list_verified_email_addresses(cmd.out)}"
+  }
+,"verifyemailaddress":
+  {"desc":"verify a new address, causing a verification email to be sent"
+  ,"ports":["aws:AWSPort"]
+  ,"args":["address:String"]
+  ,"outs":[]
+  ,"f":"function(cmd){cmd.ports[0].request('VerifyEmailAddress',{EmailAddress:cmd.args[0]},cmd.out)}"
+  }
+,"deleteverifiedemailaddress":
+  {"desc":"delete a verified email address"
+  ,"ports":["aws:AWSPort"]
+  ,"args":["address:String"]
+  ,"outs":[]
+  ,"f":"function(cmd){cmd.ports[0].request('DeleteVerifiedEmailAddress',{EmailAddress:cmd.args[0]},cmd.out)}"
+  }
+,"sendemail":
+  {"desc":"send an email message through AWS SES"
+  ,"ports":["aws:AWSPort"]
+  ,"args":["message:Object"]
+  ,"outs":["messageID:String"]
+  ,"f":"function(cmd){cmd.ports[0].request('SendEmail',cmd.args[0],cmd.out)}"
+  }
+}

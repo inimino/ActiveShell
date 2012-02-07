@@ -1,0 +1,44 @@
+{"devmode":
+  {"desc":"the best thing ever"
+  ,"_ports":["nhttpd:nhttpdPort"]
+  ,"__ports":["rvs:PortRevstore"]
+  ,"args":["storagepath:String,AbsoluteURI","proxypath:String,AbsoluteURI"]
+  ,"outs":["case:String,JSON"]
+  ,"f":"cmd.out([\"RequestHandler\",{uri:\"../modules/nhttpd/devmode\",fun:\"devmode_handler\",args:[cmd.args[0],cmd.args[1]]}])"
+  }
+,"dispatchls":
+  {"desc":"dispatch ls"
+  ,"ports":["nhttpd:nhttpdPort"]
+  ,"args":[]
+  ,"outs":["listing:String"]
+  ,"f":"cmd.ports[0].dispatch_ls(cmd.out)"
+  }
+,"dispatchcd":
+  {"desc":"dispatch cd"
+  ,"ports":["nhttpd:nhttpdPort"]
+  ,"args":["path:String"]
+  ,"outs":["pwd:String"]
+  ,"f":"cmd.ports[0].dispatch_cd(cmd.args[0],cmd.out)"
+  }
+,"dispatchcase":
+  {"desc":"construct a dispatch case dispatching matches for [matchtype] and [matchtoken] to [consequent]"
+  ,"args":["matchtype:String","matchtoken:String","consequent:Object"]
+  ,"outs":["dispatchcase:Object"]
+  ,"f":"cmd.out([cmd.args[0],cmd.args[1],cmd.args[2]])"
+  }
+,"dispatchbefore":
+  {"desc":"insert before [before] in the current dispatch branch, the new case [consequent], guarded by [matchtype] and [matchtoken] (ugh)"
+  ,"ports":["nhttpd:nhttpdPort"]
+  ,"args":["before:String","matchtype:String","matchtoken:String","consequent:String,JSON"]
+  ,"outs":["output:String"]
+  ,"f":"var a=cmd.args;cmd.ports[0].dispatch_update('before',a[0],[a[1],a[2],a[3]],cmd.out)"
+  }
+,"dispatchreplace":
+  {"desc":"replace [reference] in the current dispatch tree by [case]"
+  ,"ports":["nhttpd:nhttpdPort"]
+  ,"args":["reference:String","case:Object"]
+  ,"outs":["result:String"]
+  ,"f":"cmd.ports[0].dispatch_update('replace',cmd.args[0],cmd.args[1],cmd.out)"
+  }
+
+}

@@ -1,0 +1,29 @@
+{"keygen":
+  {"desc":"generate a keypair and return the public key in a format suitable for appending to .ssh/authorized_keys on a remote host"
+  ,"ports":["ssh:PortSSH"]
+  ,"args":[]
+  ,"outs":["result:String"]
+  ,"f":"cmd.ports[0].keygen(cmd.out)"
+  }
+,"keylist":
+  {"desc":"list the private keys installed on the gateway which can be used to connect to remote hosts"
+  ,"ports":["ssh:PortSSH"]
+  ,"args":[]
+  ,"outs":["list:String"]
+  ,"f":"cmd.ports[0].keylist(cmd.out)"
+  }
+,"connect":
+  {"desc":"establish a connection between the proxy and remote host"
+  ,"ports":["ssh:PortSSH"]
+  ,"args":["user:String","host:String","keypath:String"]
+  ,"outs":["result:String"]
+  ,"f":"cmd.ports[0].connect(cmd.args[0],cmd.args[1],cmd.args[2],cmd.out)"
+  }
+,"exec":
+  {"desc":"run a command on the remote host"
+  ,"ports":["ssh:PortSSH"]
+  ,"args":["command:String"]
+  ,"outs":["output:String"]
+  ,"f":"cmd.ports[0].exec(cmd.args[0],cmd.out)"
+  }
+}

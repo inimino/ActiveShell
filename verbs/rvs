@@ -41,6 +41,7 @@
       ,"f":"function(cmd){cmd.ports[0].ln(cmd.args[0],cmd.args[1],cmd.out)}"}
 ,"put":
       {"desc":"Put a string to a path in the revstore"
+      ,"ports":["rvs:RevstorePort"]
       ,"args":["body:String","url:String,Path"]
       ,"outs":["message:String","code:Number"]
       ,"f":"function(cmd){var p=cmd.ports[0];p.put(cmd.args[0],cmd.args[1],cmd.out)}"}

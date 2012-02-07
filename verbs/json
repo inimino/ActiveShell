@@ -1,7 +1,7 @@
 {"jsonparse":
   {"desc":"Parse a JSON string"
   ,"args":["json:String"]
-  ,"outs":["value:String|Number|Object|Array|Boolean"]
+  ,"outs":["parsed:String|Number|Object|Array|Boolean"]
   ,"f":"function(cmd){cmd.out(JSON.parse(cmd.args[0]))}"
   }
 ,"jsonstringify":

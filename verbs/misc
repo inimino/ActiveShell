@@ -7,139 +7,140 @@
   {"desc":"get the names of the properties of an object"
   ,"args":["o:Object"]
   ,"outs":["names:[String]"]
-  ,"f":"function(cmd){cmd.out(Object.keys(cmd.args[0]))}"
+  ,"f":"cmd.out(Object.keys(cmd.args[0]))"
   }
 ,"property":
   {"desc":"get a named property from an object"
   ,"args":["property_name:String","x:Object"]
-  ,"f":"function(cmd){cmd.out(cmd.args[1][cmd.args[0]])}"
+  ,"f":"cmd.out(cmd.args[1][cmd.args[0]])"
   }
 ,"setproperty":
   {"desc":"set a property of an object"
   ,"args":["object:Object","property_name:String","value:*"]
   ,"outs":["object:Object"]
-  ,"f":"function(cmd){var o=cmd.args[0],r={},p;for(p in o)r[p]=o[p];o[cmd.args[1]]=cmd.args[2];cmd.out(o)}"
+  ,"f":"var o=cmd.args[0],r={},p;for(p in o)r[p]=o[p];o[cmd.args[1]]=cmd.args[2];cmd.out(o)"
   }
 ,"mergeobj":
   {"desc":"merge two objects, extending the first with the properties of the second"
   ,"args":["o1:Object","o2:Object"]
-  ,"f":"function(cmd){var o1,o2,ret,p;o1=cmd.args[0];o2=cmd.args[1];ret={};function extend(a,b){Object.keys(b).forEach(function(k){a[k]=b[k]})}extend(ret,o1);extend(ret,o2);cmd.out(ret)}"
+  ,"f":"var o1,o2,ret,p;o1=cmd.args[0];o2=cmd.args[1];ret={};function extend(a,b){Object.keys(b).forEach(function(k){a[k]=b[k]})}extend(ret,o1);extend(ret,o2);cmd.out(ret)"
   }
 ,"emptyobj":
   {"desc":"create an empty object"
   ,"args":[]
   ,"outs":["object:Object"]
-  ,"f":"function(cmd){cmd.out({})}"
-  }
-,"map":
-  {"desc":"map"
-  ,"args":["verb:Verb","items:[a]"]
-  ,"f":"function(cmd){var res=[];cmd.args[1].forEach(function(x,i){cmd.args[0].apply(x,function(name,value){res[i]=res[i]||{};res[i][name]=value;cmd.out(res)})})}"
+  ,"f":"cmd.out({})"
   }
 ,"lines":
   {"desc":"split a file into lines"
   ,"args":["input:String"]
   ,"outs":["lines:[String]"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0].split(/\\r\\n|\\r|\\n/))}"
+  ,"f":"cmd.out(cmd.args[0].split(/\\r\\n|\\r|\\n/))"
   }
 ,"unlines":
   {"desc":"join lines into a file separated by newlines"
   ,"args":["lines:[String]"]
   ,"outs":["joined:String"]
-  ,"f":"function(cmd){cmd.out(cmd.args.join('\\n'))}"
+  ,"f":"cmd.out(cmd.args.join('\\n'))"
   }
 ,"concat":
   {"desc":"join strings"
   ,"args":["a:String","b:String"]
   ,"outs":["joined:String"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0]+cmd.args[1])}"
+  ,"f":"cmd.out(cmd.args[0]+cmd.args[1])"
   }
 ,"split":
   {"desc":"split a string by a delimiter"
   ,"args":["input:String","delimiter:String"]
   ,"outs":["substrings:[String]"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0].split(cmd.args[1]))}"
+  ,"f":"cmd.out(cmd.args[0].split(cmd.args[1]))"
   }
 ,"join":
   {"desc":"join the elements of an array, separated by [separator], to create a string"
   ,"args":["input:[String]","separator:String"]
   ,"outs":["joined:String"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0].join(cmd.args[1]))}"
+  ,"f":"cmd.out(cmd.args[0].join(cmd.args[1]))"
   }
 ,"objzip":
   {"desc":"([String], [Value]) → Object -- takes an array of property names and of values and gives an object"
   ,"args":["names:[String]","values:[*]"]
   ,"outs":["object:Object"]
-  ,"f":"function(cmd){$lists.js$;cmd.out(objectFromList(zip(cmd.args[0],cmd.args[1])))}"
+  ,"f":"$lists.js$;cmd.out(objectFromList(zip(cmd.args[0],cmd.args[1])))"
   }
 ,"caesarcypher":
   {"desc":"rotational cypher for a-z and A-Z, other characters unchanged"
   ,"args":["rotation:Integer","input:String"]
-  ,"f":"function(cmd){var a='aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ',b=a.split(''),input=cmd.args[1],n=+cmd.args[0];cmd.out(input.split('').map(function(x){var i=b.indexOf(x);return i==-1?x:b[(i+n*2)%52]}).join(''))}"
+  ,"f":"var a='aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ',b=a.split(''),input=cmd.args[1],n=+cmd.args[0];cmd.out(input.split('').map(function(x){var i=b.indexOf(x);return i==-1?x:b[(i+n*2)%52]}).join(''))"
   }
 ,"ngrams":
   {"desc":"return count of character n-grams occurrences in input text"
   ,"args":["n:Integer","text:String"]
   ,"outs":["count:Object"]
-  ,"f":"function(cmd){var n=+cmd.args[0],s=cmd.args[1],a=[],counts={},logs={},size=s.length-(n-1),i,l;for(i=0,l=s.length-(n-1);i<l;i++){a.push(s.substr(i,n))}a.forEach(function(x){counts[x]=(counts[x]||0)+1;logs[x]=Math.log(counts[x]+1/size)});cmd.out({n:n,size:size,counts:counts,logs:logs,log_default:1/size})}"
+  ,"f":"var n=+cmd.args[0],s=cmd.args[1],a=[],counts={},logs={},size=s.length-(n-1),i,l;for(i=0,l=s.length-(n-1);i<l;i++){a.push(s.substr(i,n))}a.forEach(function(x){counts[x]=(counts[x]||0)+1;logs[x]=Math.log(counts[x]+1/size)});cmd.out({n:n,size:size,counts:counts,logs:logs,log_default:1/size})"
   }
 ,"ngramlikelihood":
   {"desc":"calculate likelihood of an input relative to an ngram model"
   ,"args":["model:Model","input:String"]
   ,"outs":["likelihood:Real(0,1)"]
-  ,"f":"function(cmd){var model=cmd.args[0],s=cmd.args[1],a=[],n=model.n,i,l,log_p;for(i=0,l=s.length-(n-1);i<l;i++){a.push(s.substr(i,n))}log_p=0;for(i=0,l=a.length;i<l;i++){log_p+=model.logs[a[i]]||model.log_default}cmd.out(log_p)}"
+  ,"f":"var model=cmd.args[0],s=cmd.args[1],a=[],n=model.n,i,l,log_p;for(i=0,l=s.length-(n-1);i<l;i++){a.push(s.substr(i,n))}log_p=0;for(i=0,l=a.length;i<l;i++){log_p+=model.logs[a[i]]||model.log_default}cmd.out(log_p)"
   }
 ,"seq":
   {"desc":"generate a sequence of integers"
   ,"args":["end:Integer","start:Integer","step:Integer"]
-  ,"f":"function(cmd){var start,end,inc,i,ret=[];end=+cmd.args[0];start=0;inc=1;for(i=start;i<end;i+=inc)ret.push(i);cmd.out(ret)}"
+  ,"f":"var start,end,inc,i,ret=[];end=+cmd.args[0];start=0;inc=1;for(i=start;i<end;i+=inc)ret.push(i);cmd.out(ret)"
   }
 ,"head":
   {"desc":"head"
   ,"args":["items:[*]"]
   ,"outs":["head:*"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0][0])}"
+  ,"f":"cmd.out(cmd.args[0][0])"
   }
 ,"tail":
   {"desc":"tail"
   ,"args":["[a]"]
   ,"outs":["[a]"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0].slice(1))}"
+  ,"f":"cmd.out(cmd.args[0].slice(1))"
   }
 ,"init":
   {"desc":"init"
   ,"args":["[a]"]
   ,"outs":["[a]"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0].slice(0,-1))}"
+  ,"f":"cmd.out(cmd.args[0].slice(0,-1))"
   }
 ,"last":
   {"desc":"last"
   ,"args":["[a]"]
   ,"outs":["a"]
-  ,"f":"function(cmd){var a=cmd.args[0];cmd.out(a[a.length-1])}"
+  ,"f":"var a=cmd.args[0];cmd.out(a[a.length-1])"
+  }
+,"take":
+  {"desc":"take [n] first elements of [items]"
+  ,"args":["n:Integer","items:[a]"]
+  ,"outs":["first:[a]"]
+  ,"f":"cmd.out(cmd.args[1].slice(0,cmd.args[0]))"
   }
 ,"transpose":
   {"desc":"transpose turns columns into rows and rows into columns"
   ,"args":["[[a]]"]
   ,"outs":["[[a]]"]
-  ,"f":"function(cmd){var i,done,res=[],a=cmd.args[0];for(i=0;!done;i++){done=true;res.push(a.map(function(a){if(i+1<a.length)done=false;return a[i]}))}cmd.out(res)}"
+  ,"f":"var i,done,res=[],a=cmd.args[0];for(i=0;!done;i++){done=true;res.push(a.map(function(a){if(i+1<a.length)done=false;return a[i]}))}cmd.out(res)"
   }
 ,"reverse":
   {"desc":"reverse a list"
   ,"args":["input:[a]"]
   ,"outs":["reversed:[a]"]
-  ,"f":"function(cmd){cmd.out(cmd.args[0].reverse())}"
+  ,"f":"cmd.out(cmd.args[0].reverse())"
   }
 ,"square":
   {"desc":"square"
   ,"args":["n:Number"]
   ,"outs":["squared:Number"]
-  ,"f":"function(cmd){var n=+cmd.args[0];cmd.out(n*n)}"
+  ,"f":"var n=+cmd.args[0];cmd.out(n*n)"
   }
 ,"pair":
   {"desc":""
   ,"args":["a","b"]
   ,"outs":["pair"]
-  ,"f":"function(cmd){cmd.out([cmd.args[0],cmd.args[1]])}"
+  ,"f":"cmd.out([cmd.args[0],cmd.args[1]])"
   }
 }

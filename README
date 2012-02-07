@@ -1,17 +1,24 @@
 ActiveShell is a shell for the Web.
 
-An ActiveShell session is identified by a URI and accessed using a browser.
-
 It can be used like a Unix shell to manage files on remote systems accessible by SSH, like an REPL for exploratory programming, and can access any networked service for which a port has been implemented.
 
 http://inimino.org/~inimino/blog/shell_for_the_web
 http://inimino.org/~inimino/blog/activeshell_aiclass
 
+
+Principles
+----------
+
+Ad-hoc reuse is beautiful.
+
+Automate automation.
+
+
 Installation
 ------------
 
-The shell UI itself is contained entirely in prototype.html.
+The shell UI is in prototype.html.
 However, the shell creates a session and for that session to persist there must be a server that handles PUT requests.
-Any server that accepts HTTP PUT requests, and returns the same data on a subsequent GET, is sufficient.
+Installation on Node.js using nhttpd and revstore is the easiest approach:
 
-(... specific instructions for setting up a server ...)
+http://inimino.org/~inimino/blog/activeshell_installation

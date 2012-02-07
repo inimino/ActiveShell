@@ -11,6 +11,7 @@ ul,ol {list-style:none}
 .hidden {display:none}
 #hint {background:#333;color:#fff;position:fixed;top:69%;width:40%;left:30%;z-index:9}
 #hint, #hint * {font:16px Georgia}
+#sessionlist {position:absolute;top:20%;left:20%;height:60%;width:60%;text-align:center;overflow:auto}
 #cl {background:#222;color:#cc9;padding:2px;font:32px monospace;position:fixed;bottom:33%;left:22%;width:60%;z-index:10;-moz-border-radius:4px;text-align:center}
 #pastebox {position:fixed;bottom:22%;height:28%;left:22%;width:60%;z-index:20;padding:2px;font:18px monospace}
 #paste {height:80%;width:100%;display:block;padding:2px;border:1px solid #111;background:#aaa;color:#222}
@@ -72,6 +73,7 @@ ul,ol {list-style:none}
 <pre id=env></pre>
 <!--<pre id=listing></pre>-->
 <p id=hint class=hidden></p>
+<ol id=sessionlist></ol>
 <input id=cl>
 <fieldset id=pastebox class=hidden>
 
@@ -94,6 +96,9 @@ ul,ol {list-style:none}
 <script src=ports/fake.js></script>
 <script src=ports/rvs.js></script>
 <script src=ports/http.js></script>
+<script src=ports/aws.js></script> <!-- need to load these dynamically at some point soonish -->
+<script src=ports/nhttpd.js></script>
+<script src=ports/ssh.js></script>
 <script>
 (function(){"use strict"
 var cl=byId('cl')
@@ -103,6 +108,7 @@ var cl=byId('cl')
   , cmd_history_el=byId('cmdhistory')
   , env_el=byId('env')
   , history_el=byId('history')
+  , sessionlist_el=byId('sessionlist')
   , history_uri
   , session_uri
   , current_server_env
@@ -127,37 +133,41 @@ var cl=byId('cl')
   , paste_box_el=byId('pastebox')
 
 window.alert=alert
-function alert(s){
- output_el.insertBefore(document.createElement('li'),output_el.firstChild).appendChild(document.createTextNode(s))}
+function alert(s){output_el.insertBefore(document.createElement('li'),output_el.firstChild).appendChild(document.createTextNode(s))}
 
 function get_env(s){
- return env[s]}
+  return env[s]}
 
 function set_env(s,v){
- env[s]=v
- env_el.textContent=pp(env)
- if(s=='history'){history_el.innerHTML='';v.forEach(function(x){history_el.appendChild(cmd_to_li(x))}); history_el.scrollTop=history_el.scrollHeight}
- if(s=='verbs')load_verbs(v)
- if(s=='inputs'||s=='outputs'||s=='ports')update_io()
- persist_env(env)
- return v}
+  env[s]=v
+  env_el.textContent=pp(env)
+  if(s=='history'){history_el.innerHTML='';v.forEach(function(x){history_el.appendChild(cmd_to_li(x))}); history_el.scrollTop=history_el.scrollHeight}
+  if(s=='verbs')load_verbs(v)
+  if(s=='inputs'||s=='outputs'||s=='ports')update_io()
+  persist_env(env)
+  return v}
 
 function load_verbs(set){var p
- for(p in set)try{verb_handlers[p]=eval('('+set[p].f+')')}catch(e){alert('could not load '+p+' eval error: '+e.message)}}
+  for(p in set)try{verb_handlers[p]=eval('('+f(set[p].f)+')')}catch(e){alert('could not load verb "'+p+'": eval error: '+e.message)}
+  function f(s){var prefix
+    prefix='function(cmd){'
+    return s.slice(0,prefix.length)==prefix
+           ?s
+           :prefix+s+'}'}}
 
 function persist_env(env){var persist,o,i,p,text
- if(!ready_for_persistence)return
- persist=[/*'PWD',*/'executions','ports']//,'verbs','outputs']
- o={}
- for(i=0;p=persist[i++];) o[p]=env[p]
- //o.inputs=filter_inputs(env.inputs)
- o.verbs={}
- Object.keys(env.verbs).forEach(function(k){if(!env.verbs[k].builtin)o.verbs[k]=env.verbs[k]})
- text=JSON.stringify(o)
- if(current_server_env==text)return
- current_server_env=text
- xhr('PUT',session_uri+'env',text,function(x){if(x.status!=200)alert('error storing env')})
- }
+  if(!ready_for_persistence)return
+  persist=[/*'PWD',*/'executions','ports']//,'verbs','outputs']
+  o={}
+  for(i=0;p=persist[i++];) o[p]=env[p]
+  //o.inputs=filter_inputs(env.inputs)
+  o.verbs={}
+  Object.keys(env.verbs).forEach(function(k){if(!env.verbs[k].builtin)o.verbs[k]=env.verbs[k]})
+  text=JSON.stringify(o)
+  if(current_server_env==text)return
+  current_server_env=text
+  xhr('PUT',session_uri+'env',text,function(x){if(x.status!=200)alert('error storing env')})
+  }
 
 /*
 function filter_inputs(inputs){
@@ -195,9 +205,8 @@ function init_env(){
   ,openssh:
       {desc:"open a port to an SSH server via an HTTP gateway"
       ,builtin:true
-      ,privileged:true
-      ,args:["gateway:String","connection:String"]
-      ,f:'function(cmd){openPortSSH(cmd)}'
+      ,args:["gateway_url:String"]
+      ,f:'function(cmd){createPort("PortSSH",cmd.args)}'
       }
   ,openfake:
       {desc:"open a port to a fake filesystem"
@@ -216,6 +225,18 @@ function init_env(){
       ,builtin:true
       ,args:[]
       ,f:'function(cmd){createPort("PortHTTP",cmd.args)}'
+      }
+  ,openaws:
+      {desc:"open a port to Amazon Web Services, via the [awsrpc_path] gateway"
+      ,builtin:true
+      ,args:["awsrpc_path:String"]
+      ,f:'function(cmd){createPort("PortAWS",cmd.args)}'
+      }
+  ,opennhttpd:
+      {desc:"open an nhttpd configuration port"
+      ,builtin:true
+      ,args:["nhttpd_conf_path:String"]
+      ,f:'createPort("PortNHTTPD",cmd.args)'
       }
   ,each:
       {desc:"Calculate [output] again with [input] taken from each of [items]"
@@ -247,9 +268,11 @@ function init_env(){
 
 function hashchange(){var m,id,got_h,got_e
   emptyEl(output_el);emptyEl(cmd_history_el)
+  addClass(sessionlist_el,'hidden')
+  removeClass(cl,'hidden');cl.disabled=false;cl.focus()
   ready_for_persistence=false
   m=/script=(.*)/.exec(location.hash)
-  if(!m)return
+  if(!m)return show_session_list()
   id=m[1]
   env={}
   init_env()
@@ -283,6 +306,23 @@ function hashchange(){var m,id,got_h,got_e
     go()})
   function go(){
     if(got_h&&got_e)show_executions()}}
+
+function show_session_list(){
+  cl.disabled=true
+  addClass(cl,'hidden')
+  removeClass(sessionlist_el,'hidden')
+  xhr('GET','sessions/?text',null,function(x){list(x.status>199&&x.status<400?x.responseText:'')})
+  function list(paths){var a,el2
+    a=paths.split('\n')
+    sessionlist_el.innerHTML=''
+    a.forEach(function(path){var el1
+      el1=sessionlist_el.appendChild(cEl('li')).appendChild(cEl('a'))
+      el1.href='#script='+(el1.textContent=path.slice(0,-1))})
+    el2=sessionlist_el.appendChild(cEl('li')).appendChild(cEl('a'))
+    el2.href='#'
+    el2.onclick=function(){location.hash='script='+ +new Date;return false}
+    el2.textContent='(new)'
+    }}
 
 cl.onkeydown=function(e){var hist_pos,parsed,partial,hint_obj,context
  clear_cl_err()
@@ -356,7 +396,7 @@ function parseCmd(cmd){var i,l,c,o
       case '-': o.state=2; break // the 'in flags' state
       default: if(c<='9'&&c>='0'){o.tok=c;o.state=5;o.args.push(+c)} // the 'number literal' state
                else if(c<='z'&&c>='a'){o.tok=o.verb=c;o.verbs.push(o.tok);o.state=3} // the 'in command name' state
-               else if(c<='Z'&&c>='A'){o.ports.push(c);o.state=8} // the 'after A-Z port ref' state
+               else if(c<='Z'&&c>='A'){o.ports.push(c);o.state=0}
                else return err('could not parse '+cmd+' at char '+i)} // anything else is a syntax error
       break
     case 1: // in quoted string
@@ -369,9 +409,11 @@ function parseCmd(cmd){var i,l,c,o
       if(c==' '){o.state=0}
       else{o.flags+=c}
       break
-    case 3: // in the verb state, a-z is appended to the verb; space, double quote, or EOF terminates; anything else is an error
+    case 3: // in the verb state, a-z is appended to the verb; space, double quote, A-Z, or EOF terminates; anything else is an error
       if(c==' ')o.state=0
       else if(c=='"')o.state=1,o.tok=''
+      else if(c<='Z'&&c>='A'
+           || c<='9'&&c>='0'){i--;o.state=0;continue loop}
       else if(c<='z'&&c>='a')o.verb+=c,o.tok+=c,o.verbs[o.verbs.length-1]=o.tok
       else return err('could not parse verb at char '+i)
       break
@@ -379,12 +421,15 @@ function parseCmd(cmd){var i,l,c,o
       if(c=='\\'||c=='"'){o.tok+=c;o.state=1}
       else return err("invalid escape sequence at "+i)
       break
-    case 5: // number literal state, terminated by a space or EOF
+    case 5: // number literal state, terminated by a space, EOF, a-z, A-Z, or double quote
       if(c==' '){o.state=0}
       else if(c<='9'&&c>='0'){o.tok+=c;o.args[o.args.length-1]=parseInt(o.tok,10)}
+      else if(c>='A'&&c<='Z'
+           || c>='a'&&c<='z'
+           || c=='"'        ){i--;o.state=0;continue loop}
       else return err('invalid numeric literal at '+i)
       break
-    case 8:
+    case 8: // after a port reference
       if(c==' '){o.state=0}
       break
     default:
@@ -503,12 +548,13 @@ function prefix_completion(list,tok){
 function fmt_execution_dates(cmd){
   return cmd.executions.map(function(x){return x.ts}).join('<br>')}
 
-function createCmdRecord_handlers(cmd,id,el_out,el_type,el_status){var key,stored
+function createCmdRecord_handlers(cmd,id,el_outer,el_out,el_type,el_status){var key,stored
   command_records[id]=cmd
   cmd.output=[]
   cmd.out=out
   cmd.append=append
   cmd.status=status
+  cmd.hide=hide
   key=get_env('script')+'_cmd_'+id+'_out'
   if(stored=localStorage.getItem(key)){out_(JSON.parse(stored));cmd.status('stored')}
   else{cmd.status('(not stored)')}
@@ -519,7 +565,8 @@ function createCmdRecord_handlers(cmd,id,el_out,el_type,el_status){var key,store
    localStorage.clear()
    alert('(cleared local storage)')}}
   function out_(s){el_out.textContent=print(s);el_type.textContent=type(s);cmd.output.push(s)}
-  function status(s){if(!el_status)return;el_status.textContent=s}}
+  function status(s){if(!el_status)return;el_status.textContent=s}
+  function hide(){addClass(el_outer,'hidden')}}
 
 function type(x){
   if(x===null)return 'null'
@@ -527,7 +574,7 @@ function type(x){
   return typeof x}
 
 // called for new commands and also once for each command in the history when loading the page
-function createCmdRecord(cmd,id){var el3,el6,el11,template_cmd,template_out,html_cmd,html_out,replacements,div
+function createCmdRecord(cmd,id){var el1,el3,el6,el11,template_cmd,template_out,html_cmd,html_out,replacements,div
   template_cmd='<li class="record-separate square record-cmd">'
               +  '<div class=cmd>$cmd_to_str$</div>'
               +  '<div class=label>$id$</div>'
@@ -556,11 +603,11 @@ function createCmdRecord(cmd,id){var el3,el6,el11,template_cmd,template_out,html
   cmd_history_el.insertBefore(div.firstChild,cmd_history_el.firstChild)
   div.innerHTML=html_out
   el3=div.querySelector('.output');el6=div.querySelector('.type');el11=div.querySelector('.status')
-  output_el.insertBefore(div.firstChild,output_el.firstChild)
-  return createCmdRecord_handlers(cmd,id,el3,el6,el11)}
+  el1=output_el.insertBefore(div.firstChild,output_el.firstChild)
+  return createCmdRecord_handlers(cmd,id,el1,el3,el6,el11)}
 
 function print(x){
-  if(x instanceof Array && typeof(x[0])=='string')return x.join('\n')
+  if(x instanceof Array && x.every(function(x){return typeof x=='string'}))return x.join('\n')
   if(typeof x=='string')return x
   return pp(x,{string_limit:128,cols:96})
   return String(x)}
@@ -672,10 +719,11 @@ function update_io(){var inputs,outputs,ports
   ports.forEach(function(port,i){var el1,port_obj
     port_obj=port_objects[i]=port_objects[i]||createPortObject(port)
     if(el1=port_obj.output_el){
-      io_el.appendChild(el1)
-      return}
-    port_obj.output_el=el1=io_el.appendChild(cEl('li'))
-    update_port(port,port_obj,el1)})}
+      io_el.appendChild(el1)}
+    else{
+      port_obj.output_el=el1=io_el.appendChild(cEl('li'))
+      update_port(port,port_obj,el1)}
+    })}
 
 function update_port(port,obj,el){
   obj.on('identify',function(x){el.textContent=x})
@@ -738,6 +786,7 @@ function runEitherCmd(either){var cmd,dummy_cmd,uri,handler,history,args,hist_it
   if(!cmd.verb){clean_cl();return}
   if(cmd.verb=='rv'){clean_cl();revive(cmd);return}
   if(cmd.verb=='up'){clean_cl();update(cmd);return}
+  if(cmd.verb=='hd'){clean_cl();hide(cmd);return}
   //if(cmd.verb=='each'){clean_cl();each(cmd);return}
   handler=lookupVerb(cmd.verb)
   if(!handler){reportError('unknown verb '+cmd.verb);return}
@@ -785,6 +834,9 @@ function runEitherCmd(either){var cmd,dummy_cmd,uri,handler,history,args,hist_it
   set_env('history',history)
   set_env('history_pos',history.length)
   clean_cl()}
+
+function hide(cmd){
+  command_records[cmd.args[0]].hide()}
 
 function revive(cmd){
   return revive_by_id(cmd.args[0])}
@@ -963,7 +1015,7 @@ function cmd_to_li(cmd){var el
   el.appendChild(cTN(cmd_to_str(cmd)))
   return el}
 
-function cmd_to_str(cmd){return (cmd.args.length?cmd.args.map(arg_quote).join(' ')+' ':'')+cmd.verb+(cmd.ports&&cmd.ports.length?' ('+cmd.ports.join(' ')+')':'')}
+function cmd_to_str(cmd){return (cmd.args.length?cmd.args.map(arg_quote).join(' ')+' ':'')+cmd.verb+(cmd.ports&&cmd.ports.length?' '+cmd.ports.join(' '):'')}
 
 function fmt_date(d){
   if(d==undefined)return 'undefined'
@@ -972,7 +1024,7 @@ function fmt_date(d){
   function pad(n){return (n>9?'':'0')+n}}
 
 function arg_quote(s){
-  if(!s)return '...'
+  if(s==undefined)return '...'
   //return pp(s)
   if(typeof s=='number')return ''+s
   if(s.match(/^[A-Z]$/))return s
@@ -1002,7 +1054,7 @@ function createPort(impl_name,args){var port,ports
 function createPortObject(port){var o
   o={}
   extend(o,event_interface())
-  window[port.impl_name].init(Persistence(port),o,port.args)
+  setTimeout(function(){window[port.impl_name].init(Persistence(port),o,port.args)},0)
   //alert('createPortObject: '+pp(o))
   return o}
 
@@ -1030,17 +1082,25 @@ function Persistence(port){var base_path
 
 function loadVerbSet(cmd){var uri,set,names,dep_tokens,dep_filenames,relative
   relative="verbs/"
-  uri=relative+cmd.args[0]
-  xhr('GET',uri,null,verb_set)
+  get_verb_set()
+  function get_verb_set(){
+    uri=relative+cmd.args[0]
+    xhr('GET',uri,null,verb_set)}
   function verb_set(x){var p,metadata
+    if(x.status==404)return alt_location()
     if(x.status!=200 && x.status!=304){reportError('could not fetch '+uri);return}
     try{set=JSON.parse(x.responseText)}catch(e){cmd.out('could not parse contents of '+uri+' as JSON.');return}
     metadata=set._metadata_||{includes:[]}
     delete set._metadata_
     names=Object.keys(set)
     dep_tokens=Object.keys(metadata.includes)
+    relative=uri.replace(/[/][^/]+$/,'/')
     dep_filenames=dep_tokens.map(function(k){return relative+metadata.includes[k]})
     GET_all(dep_filenames,deps)}
+  function alt_location(){
+    relative="local/"
+    get_verb_set()
+    }
   function deps(results){var env_verbs,replacements
     //alert(pp(results))
     replacements={}
@@ -1083,7 +1143,8 @@ function paste(cmd){
   paste_cancel_el.onclick=function(){
     hide()}
   function show(){
-    paste_box_el.className=''}
+    paste_box_el.className=''
+    setTimeout(function(){paste_el.focus()},0)}
   function hide(){
     paste_box_el.className='hidden'
     cl.focus()}}
